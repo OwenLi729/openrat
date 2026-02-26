@@ -2,11 +2,11 @@ import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 @dataclass
-class ExecutionResult
-    command: [str]
+class ExecutionResult:
+    command: List[str]
     cwd: Path
     return_code: int
     stdout: str
@@ -55,13 +55,13 @@ def run_command(
             timeout=timeout,
         )
 
-        returncode = completed.returncode
+        return_code = completed.returncode
         stdout = completed.stdout
         stderr = completed.stderr
 
     except subprocess.TimeoutExpired as e:
         timed_out = True
-        returncode = -1
+        return_code = -1
         stdout = e.stdout or ""
         stderr = (e.stderr or "") + "\nProcess timed out."
 
@@ -70,7 +70,7 @@ def run_command(
     return ExecutionResult(
         command=command,
         cwd=cwd,
-        returncode=returncode,
+        return_code=return_code,
         stdout=stdout,
         stderr=stderr,
         start_time=start_time,
