@@ -1,27 +1,72 @@
 # openrat
-Your personal AI lab rat. Research-first agent designed to run, debug, chain, schedule, and report experiments. 
+Your personal AI lab rat
 
-Openrat is built for researchers and research institutions, and it is privacy-first. Under a FFOS license, you can rest assured that any proprietary data, code, or experiments you run remain solely on your local device. You can use also Openrat as an extension in VSCode, as well as any other IDE or text editor convenient to you. While running Openrat, you can use models locally, on the cloud, or choose to use API credits. 
+Openrat is a research‑first, privacy‑preserving experiment agent designed to run, debug, chain, schedule, and report computational experiments while you go about your day.
 
-Openrat is designed to automate computational experiments. It is not necessarily meant to code experiments, but can be used to help debug and add to existing code. After you give it instructions (.json, .txt, .md, or prompt the UI), Openrat will run, debug, and report the result of your experiments to you (if you give it access to your email). We specifically try to integrate with lightweight open-source models and use SOTA techniques to decrease computational cost efficiently to save you tokens and electricity, but you can also use heavier closed-source models. 
+It is built for researchers and research institutions who want automation without losing control, reproducibility, or interpretability.
 
-While Openrat runs pre-specified experiments, you can go about your day and wait for it to report results. Openrat reports a comprehensive diagnostic which shows the result of the experiment, reasoning chains and debugging processes, as well as token expenditure. If you want to stay out for longer, you can chain and branch experiments with Openrat using natural language (or if you want more reliability, add additional details to the instruction file). Openrat will ask questions before running experiments as well as notify you with any updates if it requires additional informations or encounters errors/bugs while running. It is designed to ask for help and maintain a human in the loop as necessary.
 
-Chaining experiments just means running experiments in sequence (or in parallel if necessary), and you can create branches with consecutive experiments based on the result of one. So for example, you can create a branch which runs experiment X only if result Y is encountered in the previous experiment, or have it modify the experiment when you encounter a specific result. Openrat tries to maintain interpretability and so the agent has a predetermined specific set of actions it can take following each result (?) as in you can't tell it to like code a SaaS app if the experiment fails but you can tell it to change a variable.
+What Openrat does (coming soon)
+* Runs experiments across local machines, clusters, Colab, and SSH
+* Diagnoses failures and reports actionable diagnostics
+* Chains and branches experiments based on results
+* Safely applies bounded, auditable changes (e.g. configs, hyperparameters)
+* Notifies you via email on completion, errors, or required input
+* Generates diagnostic artifacts (summaries, diffs, metrics, plots)
 
-Openrat generates artifacts such as diagnostic reports that can include text summaries and graphs post-run. 
+Openrat is editor‑agnostic (VS Code, Neovim, any IDE) and shell‑based by design.
 
-It is a research‑first experiment runner that can inspect, diagnose, and propose code changes, but it does not autonomously rewrite large portions of your codebase.
 
-Openrat’s code interaction is constrained, explicit, and auditable:
+Research‑first by design
+Openrat is not a generic AI coding agent.
 
-It can make small, scoped modifications (e.g. hyperparameters, config values, flags)
-It can apply surgical fixes for runtime errors only with user approval
-It can suggest patches without applying them
-It never refactors or expands a project unless explicitly instructed
-The goal is to protect research intent and reproducibility, not replace the researcher. For more substantial changes, Openrat provides suggested patches and explanations rather than applying them automatically.
+* It does not rewrite large portions of your codebase
+* It preserves research intent and reproducibility
+* All actions are explicit, logged, and reversible
+* A human remains in the loop whenever ambiguity or risk arises
 
-Capability-scoped autonomy (4 levels).
+For larger changes, Openrat proposes patches with explanations rather than applying them automatically.
+
+
+Bounded autonomy (capability‑scoped) (coming soon)
+Openrat uses graduated autonomy levels, enforced outside the model:
+
+* Level 0 — Observe only: run, diagnose, report
+* Level 1 — Parameter autonomy: modify configs and hyperparameters
+* Level 2 — Runtime repair: apply minimal fixes for common runtime errors (with safeguards)
+* Level 3 — Extended edits (opt‑in): larger patches within explicitly allowed scope
+
+Openrat cannot increase its own autonomy. All permissions are user‑controlled and auditable.
+
+
+Experiment chaining & branching (coming soon)
+Openrat can:
+* Run experiments sequentially or in parallel
+* Branch based on metrics, failures, or diagnostics
+* Modify parameters or select follow‑up experiments conditionally
+
+Example:
+Run experiment B only if validation loss improves after experiment A.
+Chaining logic can be defined via natural language or structured instruction files (.yaml, .json, .md) for maximum reliability.
+
+
+Model‑agnostic
+* Supports local open‑source models or cloud models (GPT, Gemini)
+
+
+Privacy & security
+* Local runs
+* No code, data, or experiments leave your machine unless you choose
+* Optional email notifications and remote control are opt‑in and authenticated (coming soon)
+* Autonomy and permissions are enforced by policy, not by the model
+
+
+What Openrat is not
+* ❌ A SaaS builder
+* ❌ A fully autonomous coding agent
+
+✅ It is a trustworthy research assistant that automates experiments while keeping you in control.
+
 
 ## Executor policy
 
