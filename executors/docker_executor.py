@@ -7,7 +7,6 @@ from pathlib import Path
 
 class DockerExecutor(BaseExecutor):
     """Stubbed Docker executor that returns a scheduling acknowledgement."""
-
     def execute(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "status": "scheduled",
