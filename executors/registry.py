@@ -21,3 +21,6 @@ class ExecutorRegistry:
 
     def list(self):
         return list(self._backends.keys())
+
+    def clear(self):
+        self._backends.clear()

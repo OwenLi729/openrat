@@ -22,3 +22,29 @@ It never refactors or expands a project unless explicitly instructed
 The goal is to protect research intent and reproducibility, not replace the researcher. For more substantial changes, Openrat provides suggested patches and explanations rather than applying them automatically.
 
 Capability-scoped autonomy (4 levels).
+
+## Executor policy
+
+Executor selection is configurable via a runtime policy. This allows tests and
+deployments to control whether lightweight stubs or production-capable backends
+are used.
+
+- Default policy: `auto` — prefers production executors for sandboxed `docker`
+  runs while keeping stub bindings for other paths.
+- Other modes: `stub` (always use stub backends), `production` (register
+  production-capable backends).
+
+Example usage:
+
+```python
+from executors import set_executor_policy
+
+# switch to production executors (useful in CI to exercise real paths)
+set_executor_policy("production")
+
+# or force stub bindings for fast unit tests
+set_executor_policy("stub")
+```
+
+Note: the `EXECUTOR_POLICY` value is exported from the `executors` package and
+can be inspected at runtime.
