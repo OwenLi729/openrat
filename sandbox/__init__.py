@@ -1,1 +1,1 @@
-# make sandbox a package
+"""Top-level sandbox compatibility folder (kept minimal for tests)."""

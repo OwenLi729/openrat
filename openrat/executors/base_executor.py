@@ -12,4 +12,3 @@ class BaseExecutor(ABC):
     @abstractmethod
     def execute(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         raise NotImplementedError()
-        

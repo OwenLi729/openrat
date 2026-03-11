@@ -7,9 +7,9 @@ import pytest
 root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(root))
 
-from executors import EXECUTORS
-from tools.executor import Executor
-from tools.base import ToolProposal
+from openrat.executors import EXECUTORS
+from openrat.tools.executor import Executor
+from openrat.tools.base import ToolProposal
 
 
 class MockGovernance:

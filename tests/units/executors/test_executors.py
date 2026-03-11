@@ -6,7 +6,7 @@ import pytest
 root = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(root))
 
-from executors import EXECUTORS
+from openrat.executors import EXECUTORS
 
 
 def test_docker_executor_schedulable():

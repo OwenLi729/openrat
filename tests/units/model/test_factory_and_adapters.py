@@ -4,8 +4,8 @@ from pathlib import Path
 # ensure project root is on sys.path when running tests directly
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from model.factory import ModelFactory
-from model.types import Message
+from openrat.model.factory import ModelFactory
+from openrat.model.types import Message
 
 
 def test_factory_creates_adapters_and_generate():

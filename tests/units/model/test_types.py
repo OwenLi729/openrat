@@ -4,7 +4,7 @@ from pathlib import Path
 # ensure project root is on sys.path when running tests directly
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from model.types import Message, ModelResponse, ToolCall
+from openrat.model.types import Message, ModelResponse, ToolCall
 
 
 def test_message_and_response_dataclasses():

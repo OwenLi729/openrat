@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openrat"
+version = "0.1.0"
+description = "OpenRat: experiment orchestration and sandboxed execution framework"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["requests>=2.0"]
+
+[project.scripts]
+openrat = "openrat.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["openrat"]

@@ -7,7 +7,7 @@ root = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(root))
 
 import tools.executor as executor_mod
-from tools.base import ToolProposal
+from openrat.tools.base import ToolProposal
 
 
 class MockGovernance:

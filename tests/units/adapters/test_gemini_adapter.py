@@ -1,7 +1,7 @@
 import pytest
 
-from model.adapters.gemini_adapter import GeminiAdapter
-from model.types import Message, ToolCall, ModelResponse
+from openrat.model.adapters.gemini_adapter import GeminiAdapter
+from openrat.model.types import Message, ToolCall, ModelResponse
 
 
 class DummyResp:
@@ -25,7 +25,7 @@ def test_gemini_adapter_parses_function_call(monkeypatch):
     def fake_post(url, json=None, timeout=None):
         return DummyResp(vendor)
 
-    monkeypatch.setattr("model.adapters.gemini_adapter.requests.post", fake_post)
+    monkeypatch.setattr("openrat.model.adapters.gemini_adapter.requests.post", fake_post)
 
     adapter = GeminiAdapter(api_key="k", model_name="g1")
     resp = adapter.generate([Message(role="user", content="start")])

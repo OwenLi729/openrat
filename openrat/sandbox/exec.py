@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, List
 
+
 @dataclass
 class ExecutionResult:
     command: List[str]
@@ -22,6 +23,7 @@ class ExecutionResult:
     @property
     def succeeded(self) -> bool:
         return self.return_code == 0 and not self.timed_out
+
 
 def run_command(
     command: List[str],
@@ -77,5 +79,3 @@ def run_command(
         end_time=end_time,
         timed_out=timed_out,
     )
-
-

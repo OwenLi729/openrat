@@ -1,5 +1,5 @@
-from model.agent_loop import AgentLoop
-from model.types import Message, ToolCall, ModelResponse
+from openrat.model.agent_loop import AgentLoop
+from openrat.model.types import Message, ToolCall, ModelResponse
 
 
 class FakeAdapter:

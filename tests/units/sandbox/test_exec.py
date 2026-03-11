@@ -10,8 +10,8 @@ import os
 root = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(root))
 
-from sandbox.exec import run_command
-from sandbox.exec import ExecutionResult
+from openrat.sandbox.exec import run_command
+from openrat.sandbox.exec import ExecutionResult
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 

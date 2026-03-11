@@ -3,10 +3,12 @@ from .base_executor import BaseExecutor
 import subprocess
 import time
 from pathlib import Path
+import os
 
 
 class DockerExecutor(BaseExecutor):
     """Stubbed Docker executor that returns a scheduling acknowledgement."""
+
     def execute(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "status": "scheduled",
@@ -27,26 +29,58 @@ class ProductionDockerExecutor(BaseExecutor):
     def __init__(self, image: str = "python:3.11"):
         self.image = image
 
-    def _build_docker_cmd(self, command: List[str], cwd: Optional[str]) -> List[str]:
-        cwd_path = Path(cwd) if cwd else Path.cwd()
-        # mount the cwd into the container at the same path
-        return [
+    def _build_docker_cmd(self, command: List[str], payload: Dict[str, Any]) -> List[str]:
+        # payload may contain 'code_dir' and 'outputs_dir' (host paths), and 'limits'
+        code_dir = payload.get("code_dir")
+        outputs_dir = payload.get("outputs_dir")
+        limits = payload.get("limits", {}) or {}
+
+        uid = os.getuid()
+        gid = os.getgid()
+
+        cmd = [
             "docker",
             "run",
             "--rm",
-            "-v",
-            f"{cwd_path}:{cwd_path}",
-            "-w",
-            str(cwd_path),
-            self.image,
-        ] + command
+            "--network",
+            "none",
+            "--security-opt",
+            "no-new-privileges",
+            "--pids-limit",
+            "100",
+            "-u",
+            f"{uid}:{gid}",
+        ]
+
+        # resource limits
+        mem = limits.get("memory")
+        cpus = limits.get("cpus")
+        if mem:
+            cmd += ["--memory", str(mem)]
+        if cpus:
+            cmd += ["--cpus", str(cpus)]
+
+        # mounts: mount code as read-only at /code, outputs as rw at /outputs
+        if code_dir:
+            cmd += ["-v", f"{Path(code_dir)}:/code:ro"]
+        if outputs_dir:
+            cmd += ["-v", f"{Path(outputs_dir)}:/outputs:rw"]
+
+        # set working directory inside container to /outputs if provided
+        workdir = "/outputs" if outputs_dir else None
+        if workdir:
+            cmd += ["-w", workdir]
+
+        cmd += [self.image]
+        cmd += command
+        return cmd
 
     def execute(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         command = payload.get("command")
-        cwd = payload.get("cwd")
         timeout = payload.get("timeout")
+        cwd = payload.get("cwd")
 
-        docker_cmd = self._build_docker_cmd(command, cwd)
+        docker_cmd = self._build_docker_cmd(command, payload)
 
         start = time.time()
         timed_out = False

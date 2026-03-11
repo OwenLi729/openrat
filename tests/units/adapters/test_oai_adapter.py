@@ -3,8 +3,8 @@ import types
 
 import pytest
 
-from model.adapters.oai_adapter import OpenAICompatibleAdapter
-from model.types import Message, ToolCall, ModelResponse
+from openrat.model.adapters.oai_adapter import OpenAICompatibleAdapter
+from openrat.model.types import Message, ToolCall, ModelResponse
 
 
 class DummyResp:
@@ -34,7 +34,7 @@ def test_oai_adapter_parses_tool_calls(monkeypatch):
     def fake_post(url, json=None, headers=None, timeout=None):
         return DummyResp(vendor)
 
-    monkeypatch.setattr("model.adapters.oai_adapter.requests.post", fake_post)
+    monkeypatch.setattr("openrat.model.adapters.oai_adapter.requests.post", fake_post)
 
     adapter = OpenAICompatibleAdapter(base_url="https://api", api_key="key", model_name="m1")
     resp = adapter.generate([Message(role="user", content="please")])
