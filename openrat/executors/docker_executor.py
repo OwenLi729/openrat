@@ -6,6 +6,14 @@ from pathlib import Path
 import os
 
 
+def _to_text(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return str(value)
+
+
 class DockerExecutor(BaseExecutor):
     """Stubbed Docker executor that returns a scheduling acknowledgement."""
 
@@ -97,8 +105,8 @@ class ProductionDockerExecutor(BaseExecutor):
         except subprocess.TimeoutExpired as e:
             timed_out = True
             return_code = -1
-            stdout = e.stdout or ""
-            stderr = (e.stderr or "") + "\nDocker process timed out."
+            stdout = _to_text(e.stdout)
+            stderr = _to_text(e.stderr) + "\nDocker process timed out."
 
         end = time.time()
 

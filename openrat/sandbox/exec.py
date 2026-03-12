@@ -5,6 +5,14 @@ from pathlib import Path
 from typing import Optional, List
 
 
+def _to_text(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return str(value)
+
+
 @dataclass
 class ExecutionResult:
     command: List[str]
@@ -64,8 +72,8 @@ def run_command(
     except subprocess.TimeoutExpired as e:
         timed_out = True
         return_code = -1
-        stdout = e.stdout or ""
-        stderr = (e.stderr or "") + "\nProcess timed out."
+        stdout = _to_text(e.stdout)
+        stderr = _to_text(e.stderr) + "\nProcess timed out."
 
     end_time = time.time()
 
