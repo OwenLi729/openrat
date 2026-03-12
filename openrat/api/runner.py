@@ -4,33 +4,43 @@ import shutil
 import tempfile
 
 from openrat.executors import LocalExecutor, ProductionDockerExecutor
+from openrat.errors import UserInputError, EnvironmentError
 
 
 def _validate_experiment_path(path: str) -> Path:
     p = Path(path)
     if not p.exists():
-        raise FileNotFoundError(f"Experiment file not found: {path}")
+        raise EnvironmentError(f"Experiment file not found: {path}")
     p = p.resolve()
     cwd = Path.cwd().resolve()
     try:
         p.relative_to(cwd)
-    except Exception:
+    except ValueError:
         # restrict running experiments outside current working directory
-        raise PermissionError("Experiment path must live inside the current working directory")
+        raise EnvironmentError("Experiment path must live inside the current working directory")
     return p
 
 
 def _choose_executor(preferred: Optional[str], docker_image: str):
     # prefer docker when available unless explicitly asked for local
+    if preferred is not None and preferred not in {"local", "docker"}:
+        raise UserInputError(
+            f"unsupported executor '{preferred}'",
+            hint="Use one of: local, docker",
+        )
+
     if preferred == "local":
         return LocalExecutor()
 
     if preferred == "docker":
+        if not shutil.which("docker"):
+            raise EnvironmentError(
+                "docker executor requested but docker is not available",
+                hint="Install Docker or use executor='local'.",
+            )
         return ProductionDockerExecutor(image=docker_image)
 
-    import shutil as _sh
-
-    if _sh.which("docker"):
+    if shutil.which("docker"):
         return ProductionDockerExecutor(image=docker_image)
 
     return LocalExecutor()
@@ -137,7 +147,7 @@ class OpenRatAgent:
         set in the config passed to ``__init__``.
         """
         if self.agent_loop is None:
-            raise RuntimeError(
+            raise UserInputError(
                 "No model configured. Pass 'provider', 'api_key', and 'model_name' "
                 "in the config dict to enable the LLM agent loop."
             )

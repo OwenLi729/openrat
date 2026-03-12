@@ -1,6 +1,7 @@
 from .docker_executor import ProductionDockerExecutor, DockerExecutor
 from .local_executor import LocalExecutor
 from .registry import ExecutorRegistry
+from openrat.errors import UserInputError
 
 # Executor policy controls whether the registry provides production-capable
 # executors or lightweight stubs. Default is 'auto' to prefer production
@@ -10,7 +11,7 @@ EXECUTOR_POLICY = {"mode": "auto"}
 
 def set_executor_policy(mode: str):
 	if mode not in ("stub", "production", "auto"):
-		raise ValueError("unsupported executor policy mode")
+		raise UserInputError("unsupported executor policy mode")
 	EXECUTOR_POLICY["mode"] = mode
 	_REGISTRY.clear()
 	if mode == "production":

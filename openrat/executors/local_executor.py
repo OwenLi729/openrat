@@ -3,7 +3,7 @@ from .base_executor import BaseExecutor
 
 try:
     from openrat.sandbox.exec import run_command
-except Exception:
+except ImportError:
     run_command = None  # type: ignore[assignment]
 
 

@@ -1,6 +1,7 @@
 from typing import List, Optional
 
 from .types import Message, ModelResponse, ToolCall
+from openrat.errors import UserInputError, InternalError
 
 class AgentLoop:
     def __init__(self, adapter, tool_registry=None):
@@ -10,6 +11,8 @@ class AgentLoop:
     def run_once(self, messages: List[Message]) -> ModelResponse:
         """One LLM call: generate a response and execute any tool calls."""
         resp: ModelResponse = self.adapter.generate(messages)
+        if resp is None:
+            raise InternalError("model adapter returned no response")
 
         # handle tool calls by delegating to registry and appending tool messages
         if resp.tool_calls and self.tool_registry:
@@ -29,9 +32,14 @@ class AgentLoop:
         Tool results are appended to `messages` in-place so the model sees
         the full context on the next turn.
         """
-        resp = None
+        if not isinstance(max_turns, int) or max_turns <= 0:
+            raise UserInputError("max_turns must be a positive integer")
+
+        resp: Optional[ModelResponse] = None
         for _ in range(max_turns):
             resp = self.run_once(messages)
             if not resp.tool_calls:
                 break
+        if resp is None:
+            raise InternalError("agent loop exited without producing a response")
         return resp

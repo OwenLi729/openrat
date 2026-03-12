@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from openrat.model.agent_loop import AgentLoop
 from openrat.model.types import Message, ModelResponse, ToolCall
 from openrat.tools.registry import ToolRegistry
+from openrat.errors import UserInputError, InternalError
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -52,6 +53,11 @@ class _AdapterToolThenDone:
                 tool_calls=[ToolCall(id="tc1", name="greet", arguments={"name": "world"})],
             )
         return _make_response(content="all done")
+
+
+class _AdapterReturnsNone:
+    def generate(self, messages):
+        return None
 
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
@@ -136,3 +142,16 @@ def test_run_returns_last_response():
     loop = AgentLoop(adapter, tool_registry=reg)
     resp = loop.run([Message(role="user", content="x")], max_turns=1)
     assert isinstance(resp, ModelResponse)
+
+
+def test_run_with_invalid_max_turns_raises_user_input_error():
+    adapter = _AdapterNoTools("ok")
+    loop = AgentLoop(adapter)
+    with pytest.raises(UserInputError, match="max_turns"):
+        loop.run([Message(role="user", content="x")], max_turns=0)
+
+
+def test_run_once_with_none_response_raises_internal_error():
+    loop = AgentLoop(_AdapterReturnsNone())
+    with pytest.raises(InternalError, match="returned no response"):
+        loop.run_once([Message(role="user", content="x")])

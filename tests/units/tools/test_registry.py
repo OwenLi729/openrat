@@ -6,6 +6,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from openrat.tools.registry import ToolRegistry
+from openrat.errors import UserInputError
 
 
 def test_register_and_execute_happy_path():
@@ -15,9 +16,9 @@ def test_register_and_execute_happy_path():
     assert result == {"result": 7}
 
 
-def test_execute_unknown_tool_raises_key_error():
+def test_execute_unknown_tool_raises_user_input_error():
     reg = ToolRegistry()
-    with pytest.raises(KeyError, match="not found"):
+    with pytest.raises(UserInputError, match="not found"):
         reg.execute("nonexistent", {})
 
 

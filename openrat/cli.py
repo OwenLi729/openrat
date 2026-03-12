@@ -1,6 +1,7 @@
 import argparse
 import sys
 from .api import run, OpenRatAgent
+from .errors import OpenratError
 
 
 def main(argv=None):
@@ -22,6 +23,9 @@ def main(argv=None):
             for k, v in res.items():
                 print(f"{k}: {v}")
             return 0
+        except OpenratError as e:
+            print("Error:", e, file=sys.stderr)
+            return 2
         except Exception as e:
             print("Error:", e, file=sys.stderr)
             return 2

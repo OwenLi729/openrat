@@ -1,11 +1,13 @@
 import sys
 from pathlib import Path
+import pytest
 
 # ensure project root is on sys.path when running tests directly
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from openrat.model.factory import ModelFactory
 from openrat.model.types import Message
+from openrat.errors import UserInputError
 
 
 def test_factory_creates_adapters_and_generate():
@@ -24,3 +26,8 @@ def test_factory_creates_adapters_and_generate():
     m_gem = ModelFactory.create(cfg_gem)
     resp3 = m_gem.generate([Message(role="user", content="yo")])
     assert "gemini" in (resp3.content or "")
+
+
+def test_factory_unknown_provider_raises_user_input_error():
+    with pytest.raises(UserInputError, match="unknown provider"):
+        ModelFactory.create({"provider": "nope"})

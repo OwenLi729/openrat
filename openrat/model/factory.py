@@ -3,6 +3,7 @@ from typing import Dict, Any
 from .adapters.oai_adapter import OpenAICompatibleAdapter
 from .adapters.claude_adapter import ClaudeAdapter
 from .adapters.gemini_adapter import GeminiAdapter
+from openrat.errors import UserInputError
 
 
 class ModelFactory:
@@ -16,4 +17,7 @@ class ModelFactory:
         if provider == "gemini":
             return GeminiAdapter(api_key=cfg.get("api_key"), model_name=cfg.get("model_name"))
 
-        raise ValueError(f"unknown provider: {provider}")
+        raise UserInputError(
+            f"unknown provider: {provider}",
+            hint="Supported providers: openai_compatible, claude, gemini",
+        )

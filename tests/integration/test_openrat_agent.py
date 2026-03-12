@@ -11,6 +11,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from openrat.api.runner import OpenRatAgent, _validate_experiment_path
+from openrat.errors import UserInputError, EnvironmentError
 from openrat.model.types import Message, ModelResponse, ToolCall
 from openrat.tools.registry import ToolRegistry
 
@@ -57,7 +58,7 @@ class _FakeAdapterRunsTool:
 
 def test_chat_without_provider_raises():
     agent = OpenRatAgent({"executor": "local"})
-    with pytest.raises(RuntimeError, match="No model configured"):
+    with pytest.raises(UserInputError, match="No model configured"):
         agent.chat("hello")
 
 
@@ -225,7 +226,7 @@ def test_chat_drives_run_experiment_tool(monkeypatch):
 # ── _validate_experiment_path ──────────────────────────────────────────────────
 
 def test_validate_path_file_not_found():
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(EnvironmentError):
         _validate_experiment_path("/tmp/does_not_exist_openrat_test.py")
 
 
@@ -234,7 +235,7 @@ def test_validate_path_outside_cwd_raises():
     with tempfile.NamedTemporaryFile(suffix=".py", dir="/tmp", delete=False) as f:
         fpath = f.name
     try:
-        with pytest.raises(PermissionError, match="current working directory"):
+        with pytest.raises(EnvironmentError, match="current working directory"):
             _validate_experiment_path(fpath)
     finally:
         os.unlink(fpath)

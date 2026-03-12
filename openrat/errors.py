@@ -1,0 +1,54 @@
+from __future__ import annotations
+
+from typing import Optional
+
+
+class OpenratError(Exception):
+    """Base class for all Openrat-specific exceptions."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        cause: Optional[BaseException] = None,
+        hint: Optional[str] = None,
+    ) -> None:
+        super().__init__(message)
+        self.cause = cause
+        self.hint = hint
+
+    def __str__(self) -> str:
+        msg = super().__str__()
+        if self.hint:
+            msg += f"\nHint: {self.hint}"
+        return msg
+
+
+class UserInputError(OpenratError):
+    """Invalid user input (config, command, or instruction)."""
+
+
+class PolicyViolation(OpenratError):
+    """Action was disallowed by the active autonomy policy."""
+
+
+class ExecutionError(OpenratError):
+    """Openrat failed while orchestrating execution."""
+
+
+class EnvironmentError(OpenratError):
+    """Execution environment is invalid or incomplete."""
+
+
+class InternalError(OpenratError):
+    """Invariant violation or unreachable state inside Openrat."""
+
+
+__all__ = [
+    "OpenratError",
+    "UserInputError",
+    "PolicyViolation",
+    "ExecutionError",
+    "EnvironmentError",
+    "InternalError",
+]

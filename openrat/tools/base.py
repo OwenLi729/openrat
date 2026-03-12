@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Any, Dict
+from openrat.errors import UserInputError, PolicyViolation
 
 
 @dataclass
@@ -19,13 +20,13 @@ class BaseTool:
     def validate(self, proposal: ToolProposal):
         # check proposal type
         if not isinstance(proposal, ToolProposal):
-            raise TypeError("proposal must be a ToolProposal")
+            raise UserInputError("proposal must be a ToolProposal")
 
         # autonomy check
         if self.governance is not None:
             level = getattr(self.governance, "autonomy_level", 0)
             if level < self.required_autonomy_level:
-                raise PermissionError("insufficient autonomy level for this tool")
+                raise PolicyViolation("insufficient autonomy level for this tool")
         # delegate to subclass payload validator when present
         validator = getattr(self, "_validate_payload", None)
         if callable(validator):

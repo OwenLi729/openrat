@@ -1,5 +1,7 @@
 """Tool registry for openrat.tools."""
 
+from openrat.errors import UserInputError
+
 class ToolRegistry:
     def __init__(self):
         self._tools = {}
@@ -18,5 +20,5 @@ class ToolRegistry:
         """Look up tool by name and call it with arguments dict."""
         tool = self._tools.get(name)
         if tool is None:
-            raise KeyError(f"tool '{name}' not found in registry")
+            raise UserInputError(f"tool '{name}' not found in registry")
         return tool(arguments)
