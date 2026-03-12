@@ -43,7 +43,7 @@ def test_local_executor_calls_run_command(monkeypatch):
         assert cmd == ["python", "a.py"]
         return DummyResult()
 
-    monkeypatch.setattr("executors.local_executor.run_command", fake_run_command)
+    monkeypatch.setattr("openrat.executors.local_executor.run_command", fake_run_command)
 
     res = local.execute({"command": ["python", "a.py"], "cwd": ".", "timeout": 1})
     assert res["status"] == "completed"

@@ -57,7 +57,7 @@ def test_tools_executor_routes_all(monkeypatch):
         def succeeded(self):
             return self.return_code == 0 and not self.timed_out
 
-    monkeypatch.setattr("executors.local_executor.run_command", lambda *a, **k: DummyResult())
+    monkeypatch.setattr("openrat.executors.local_executor.run_command", lambda *a, **k: DummyResult())
 
     # stub subprocess.run for docker_prod
     completed = subprocess.CompletedProcess(args=["docker"], returncode=0, stdout="ok", stderr="")

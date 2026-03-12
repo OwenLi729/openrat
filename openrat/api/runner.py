@@ -80,10 +80,68 @@ def run(path: str, *, executor: Optional[str] = None, timeout: Optional[int] = N
 
 
 class OpenRatAgent:
+    """Public entry point for OpenRat.
+
+    Pass only execution keys (``executor``, ``docker_image``) to use the
+    direct execution path via ``agent.run(path)``.
+
+    Pass model keys (``provider``, ``api_key``, ``model_name``, etc.) in
+    addition to enable the LLM agent loop via ``agent.chat(messages)``.
+    """
+
     def __init__(self, config: Optional[dict] = None):
         self.config = config or {}
         self.executor = self.config.get("executor")
         self.docker_image = self.config.get("docker_image", "python:3.11")
 
-    def run(self, path: str, timeout: Optional[int] = None, isolate: bool = True, memory: str = "512m", cpus: str = "1.0"):
+        # Build the LLM agent loop only when a model provider is configured.
+        self.agent_loop: Any = None
+        self.tool_registry: Any = None
+        if self.config.get("provider"):
+            from openrat.model.factory import ModelFactory
+            from openrat.model.agent_loop import AgentLoop
+            from openrat.tools.registry import ToolRegistry
+
+            adapter = ModelFactory.create(self.config)
+            self.tool_registry = ToolRegistry()
+
+            # Register the execution runner as callable tool for the model.
+            _self = self
+            def run_experiment(arguments: dict) -> dict:
+                path = arguments.get("path")
+                if not path:
+                    return {"status": "error", "reason": "path is required"}
+                return _self.run(
+                    path,
+                    timeout=arguments.get("timeout"),
+                    isolate=arguments.get("isolate", True),
+                    memory=arguments.get("memory", "512m"),
+                    cpus=arguments.get("cpus", "1.0"),
+                )
+
+            self.tool_registry.register("run_experiment", run_experiment)
+            self.agent_loop = AgentLoop(adapter, tool_registry=self.tool_registry)
+
+    def run(self, path: str, timeout: Optional[int] = None, isolate: bool = True, memory: str = "512m", cpus: str = "1.0") -> Dict[str, Any]:
+        """Directly execute an experiment file via the configured executor."""
         return run(path, executor=self.executor, timeout=timeout, docker_image=self.docker_image, isolate=isolate, memory=memory, cpus=cpus)
+
+    def chat(self, messages, max_turns: int = 10):
+        """Drive the LLM agent loop over a conversation.
+
+        ``messages`` can be:
+        - a plain string (converted to a single user Message), or
+        - a list of ``openrat.model.types.Message`` objects.
+
+        Requires ``provider`` (and usually ``api_key``, ``model_name``) to be
+        set in the config passed to ``__init__``.
+        """
+        if self.agent_loop is None:
+            raise RuntimeError(
+                "No model configured. Pass 'provider', 'api_key', and 'model_name' "
+                "in the config dict to enable the LLM agent loop."
+            )
+        from openrat.model.types import Message as _Message
+        if isinstance(messages, str):
+            messages = [_Message(role="user", content=messages)]
+        return self.agent_loop.run(list(messages), max_turns=max_turns)

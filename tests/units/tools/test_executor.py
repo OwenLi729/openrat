@@ -6,7 +6,7 @@ import pytest
 root = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(root))
 
-import tools.executor as executor_mod
+import openrat.tools.executor as executor_mod
 from openrat.tools.base import ToolProposal
 
 

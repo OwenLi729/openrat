@@ -21,13 +21,21 @@ Modes
 API
 ---
 
-Use the following API from the `executors` package:
+Use the following API from the `openrat.executors` package:
 
 ```python
-from executors import set_executor_policy, EXECUTOR_POLICY
+from openrat.executors import set_executor_policy, EXECUTOR_POLICY
 
 set_executor_policy("production")
-print(EXECUTOR_POLICY)
+print(EXECUTOR_POLICY)  # {'mode': 'production'}
+```
+
+Checking which executors are registered at runtime:
+
+```python
+from openrat.executors import _REGISTRY
+
+print(_REGISTRY.list())  # ['docker', 'local']
 ```
 
 Notes
@@ -38,3 +46,5 @@ Notes
   `EXECUTORS`.
 - CI pipelines that should exercise production execution paths should call
   `set_executor_policy("production")` before running integration tests.
+- The top-level `executors` module is a compatibility shim that re-exports
+  from `openrat.executors`. All new code should import from `openrat.executors`.
