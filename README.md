@@ -68,6 +68,26 @@ What Openrat is not
 ✅ It is a trustworthy research assistant that automates experiments while keeping you in control.
 
 
+## API entry points
+
+Use `Openrat` as the recommended public API.
+
+```python
+from openrat import Openrat
+
+app = Openrat({"executor": "local"})
+
+session = app.create_session(autonomy=..., patch_policy="interactive")
+spec = app.spec_from_final_json(final_json)
+plan = app.build_plan(spec, session)
+artifact = app.execute_plan(plan, session, tools=my_tools)
+```
+
+`OpenRatAgent` remains public as a low-level/legacy API for direct execution and
+direct LLM loop control. `Openrat.run()` and `Openrat.chat()` are compatibility
+forwards for non-planned paths.
+
+
 ## Executor policy
 
 Executor selection is configurable via a runtime policy. This allows tests and
@@ -82,7 +102,7 @@ are used.
 Example usage:
 
 ```python
-from executors import set_executor_policy
+from openrat.executors import set_executor_policy
 
 # switch to production executors (useful in CI to exercise real paths)
 set_executor_policy("production")

@@ -1,17 +1,23 @@
 # LLM Agent Loop
 
-This document explains how `AgentLoop` and `OpenRatAgent.chat()` work together
+This document explains how `AgentLoop` and `Openrat.chat()` work together
 to drive a multi-turn LLM loop.
+
+`Openrat` is the recommended API. `OpenRatAgent` remains available as a
+low-level/legacy runtime adapter.
 
 ---
 
 ## Overview
 
 ```
-OpenRatAgent.chat(messages)
+Openrat.chat(messages)
         │
         ▼
-    AgentLoop.run(messages, max_turns=10)
+  OpenRatAgent.chat(...)  (forwarded compatibility path)
+    │
+    ▼
+  AgentLoop.run(messages, max_turns=10)
         │
         ├── turn 1: adapter.generate(messages)
         │       ├── model returns text → done, return response
@@ -30,13 +36,13 @@ OpenRatAgent.chat(messages)
 
 ## Enabling the loop
 
-The loop is built automatically inside `OpenRatAgent` when a `provider` key is
-present in config:
+The loop is built automatically by the low-level runtime when a `provider` key
+is present in config:
 
 ```python
-from openrat import OpenRatAgent
+from openrat import Openrat
 
-agent = OpenRatAgent({
+app = Openrat({
     "provider": "openai_compatible",  # or "claude" or "gemini"
     "base_url": "https://api.openai.com/v1",
     "api_key": "sk-...",
@@ -44,24 +50,24 @@ agent = OpenRatAgent({
 })
 ```
 
-Without `provider`, `agent.run(path)` (direct execution) still works but
-`agent.chat()` will raise `RuntimeError`.
+Without `provider`, `app.run(path)` (direct execution) still works but
+`app.chat()` will raise `UserInputError`.
 
 ---
 
 ## Sending messages
 
-`agent.chat()` accepts:
+`app.chat()` accepts:
 
 - A plain string (converted to `Message(role="user", content=...)`):
   ```python
-  response = agent.chat("Run experiments/train.py and summarise the output.")
+  response = app.chat("Run experiments/train.py and summarise the output.")
   ```
 - A list of `Message` objects (for multi-turn context):
   ```python
   from openrat.model.types import Message
 
-  response = agent.chat([
+  response = app.chat([
       Message(role="system", content="You are a research assistant."),
       Message(role="user",   content="Run experiments/train.py."),
   ])
@@ -78,7 +84,7 @@ print(response.stop_reason)  # e.g. "end_turn", "max_turns"
 
 ## Built-in tool: run_experiment
 
-When a model provider is configured, OpenRatAgent automatically registers a
+When a model provider is configured, the low-level runtime automatically registers a
 `run_experiment` tool. The model can call it with:
 
 ```json
@@ -93,7 +99,7 @@ When a model provider is configured, OpenRatAgent automatically registers a
 }
 ```
 
-Arguments mirror `OpenRatAgent.run()`:
+Arguments mirror `Openrat.run()` / `OpenRatAgent.run()`:
 
 | Argument  | Type    | Default  | Description                             |
 |-----------|---------|----------|-----------------------------------------|
@@ -108,18 +114,18 @@ Arguments mirror `OpenRatAgent.run()`:
 ## Registering custom tools
 
 ```python
-from openrat import OpenRatAgent
+from openrat import Openrat
 
-agent = OpenRatAgent({"provider": "openai_compatible", ...})
+app = Openrat({"provider": "openai_compatible", ...})
 
 def fetch_metric(arguments: dict) -> dict:
     name = arguments["name"]
     # ... load from DB / file / API ...
     return {"metric": name, "value": 0.92}
 
-agent.tool_registry.register("fetch_metric", fetch_metric)
+app.tool_registry.register("fetch_metric", fetch_metric)
 
-response = agent.chat("Fetch accuracy and then run experiments/eval.py")
+response = app.chat("Fetch accuracy and then run experiments/eval.py")
 ```
 
 Any function `f(arguments: dict) -> dict` can be registered.
@@ -128,7 +134,7 @@ Any function `f(arguments: dict) -> dict` can be registered.
 
 ## max_turns
 
-`agent.chat(messages, max_turns=10)` limits the number of LLM calls to prevent
+`app.chat(messages, max_turns=10)` limits the number of LLM calls to prevent
 infinite loops. The loop exits early as soon as the model produces a response
 with no tool calls. The final `ModelResponse` is always returned regardless of
 how many turns were used.

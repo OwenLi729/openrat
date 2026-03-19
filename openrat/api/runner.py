@@ -17,6 +17,7 @@ def _validate_experiment_path(path: str) -> Path:
         p.relative_to(cwd)
     except ValueError:
         # restrict running experiments outside current working directory
+        # Invalid experiment path currently mapped to EnvironmentError. This could also be argued as UserInputError.
         raise EnvironmentError("Experiment path must live inside the current working directory")
     return p
 
@@ -90,7 +91,16 @@ def run(path: str, *, executor: Optional[str] = None, timeout: Optional[int] = N
 
 
 class OpenRatAgent:
-    """Public entry point for OpenRat.
+    """Low-level runtime adapter for direct execution and LLM interaction.
+
+    This is a legacy public API.
+
+    ``Openrat`` is the recommended public facade for framework workflows
+    (session/spec/plan/artifact). ``OpenRatAgent`` remains public for backward
+    compatibility and advanced use cases that need direct execution or direct
+    LLM tool loops.
+
+    Planning, policy, and approval ownership remains with ``Openrat``.
 
     Pass only execution keys (``executor``, ``docker_image``) to use the
     direct execution path via ``agent.run(path)``.
@@ -117,6 +127,7 @@ class OpenRatAgent:
 
             # Register the execution runner as callable tool for the model.
             _self = self
+
             def run_experiment(arguments: dict) -> dict:
                 path = arguments.get("path")
                 if not path:
@@ -133,7 +144,7 @@ class OpenRatAgent:
             self.agent_loop = AgentLoop(adapter, tool_registry=self.tool_registry)
 
     def run(self, path: str, timeout: Optional[int] = None, isolate: bool = True, memory: str = "512m", cpus: str = "1.0") -> Dict[str, Any]:
-        """Directly execute an experiment file via the configured executor."""
+        """Directly execute an experiment file (non-planned execution path)."""
         return run(path, executor=self.executor, timeout=timeout, docker_image=self.docker_image, isolate=isolate, memory=memory, cpus=cpus)
 
     def chat(self, messages, max_turns: int = 10):

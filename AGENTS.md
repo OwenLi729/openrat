@@ -1,7 +1,10 @@
-# OpenRat Agent Architecture
+# OpenRat API Architecture
 
 This document describes how the two main subsystems — the **execution runner** and
 the **LLM agent loop** — fit together and how to use them.
+
+`Openrat` is the recommended public API. `OpenRatAgent` remains public as a
+low-level/legacy runtime adapter for backward compatibility.
 
 ---
 
@@ -11,35 +14,41 @@ the **LLM agent loop** — fit together and how to use them.
 User code
    │
    ▼
-OpenRatAgent (openrat/api/runner.py)
-   ├─── Execution path (always available)
-   │       agent.run("experiment.py")
-   │       └── _choose_executor() → LocalExecutor | ProductionDockerExecutor
-   │               └── sandbox.exec.run_command → subprocess
+Openrat (openrat/api/openrat.py)
+   ├─── Framework workflow (recommended)
+   │       create_session → spec_from_final_json → build_plan → execute_plan
+   │       └── Plan/DAG execution + Artifact creation
    │
-   └─── LLM agent loop path (requires model config)
-           agent.chat([Message(role="user", content="...")])
-           └── AgentLoop.run(messages)
-                   ├── adapter.generate(messages)   ← LLM call
-                   ├── if tool_calls → ToolRegistry.execute(name, args)
-                   │       └── registered tool (e.g. "run_experiment")
-                   │               └── openrat.api.runner.run(...)
-                   └── repeat until no more tool calls
+   ├─── Direct compatibility path (non-planned)
+   │       app.run("experiment.py")
+   │       └── OpenRatAgent.run(...)
+   │               └── _choose_executor() → LocalExecutor | ProductionDockerExecutor
+   │                       └── sandbox.exec.run_command → subprocess
+   │
+   └─── LLM agent loop compatibility path (requires model config)
+       app.chat([Message(role="user", content="...")])
+       └── OpenRatAgent.chat(...) → AgentLoop.run(messages)
+           ├── adapter.generate(messages)   ← LLM call
+           ├── if tool_calls → ToolRegistry.execute(name, args)
+           │       └── registered tool (e.g. "run_experiment")
+           │               └── openrat.api.runner.run(...)
+           └── repeat until no more tool calls
 ```
 
 ---
 
 ## Two layers
 
-### Layer 1 — Execution runner
+### Layer 1 — Recommended facade + direct runner
 
-`OpenRatAgent.run(path)` is a direct, LLM-free execution path.
+`Openrat` owns session/spec/plan/artifact workflow. It also forwards
+`run(path)` as a direct, LLM-free compatibility path.
 
 ```python
-from openrat import OpenRatAgent
+from openrat import Openrat
 
-agent = OpenRatAgent({"executor": "docker", "docker_image": "python:3.11"})
-result = agent.run("experiments/train.py", timeout=120)
+app = Openrat({"executor": "docker", "docker_image": "python:3.11"})
+result = app.run("experiments/train.py", timeout=120)
 print(result["stdout"])
 ```
 
@@ -47,7 +56,8 @@ Key components:
 
 | Component | Location | Role |
 |-----------|----------|------|
-| `OpenRatAgent` | `openrat/api/runner.py` | Entry point; holds executor defaults |
+| `Openrat` | `openrat/api/openrat.py` | Recommended facade for framework workflow |
+| `OpenRatAgent` | `openrat/api/runner.py` | Low-level runtime + LLM adapter |
 | `_choose_executor` | `openrat/api/runner.py` | Picks Docker or local based on availability |
 | `ProductionDockerExecutor` | `openrat/executors/docker_executor.py` | Hardened Docker execution |
 | `LocalExecutor` | `openrat/executors/local_executor.py` | Subprocess execution for dev/trust |
@@ -57,22 +67,22 @@ Key components:
 
 ### Layer 2 — LLM agent loop
 
-`OpenRatAgent.chat(messages)` drives a **multi-turn LLM loop**. The model can call
-tools (e.g. run experiments) and the loop continues until the model produces no more
-tool calls.
+`Openrat.chat(messages)` forwards to `OpenRatAgent.chat(messages)` and drives a
+**multi-turn LLM loop**. The model can call tools (e.g. run experiments) and the
+loop continues until the model produces no more tool calls.
 
 ```python
-from openrat import OpenRatAgent
+from openrat import Openrat
 from openrat.model.types import Message
 
-agent = OpenRatAgent({
+app = Openrat({
     "provider": "openai_compatible",
     "base_url": "https://api.openai.com/v1",
     "api_key": "sk-...",
     "model_name": "gpt-4o",
 })
 
-response = agent.chat([
+response = app.chat([
     Message(role="user", content="Run experiments/train.py and summarise the output.")
 ])
 print(response.content)
@@ -88,8 +98,9 @@ Key components:
 | Provider adapters | `openrat/model/adapters/` | OpenAI-compatible, Claude, Gemini |
 
 When model config keys (`provider`, `api_key`, etc.) are present in the config dict
-passed to `OpenRatAgent`, it automatically builds an `AgentLoop` and registers the
-`run_experiment` tool so the model can invoke the execution runner.
+passed to `Openrat` (or directly to `OpenRatAgent`), the low-level runtime builds
+an `AgentLoop` and registers the `run_experiment` tool so the model can invoke the
+execution runner.
 
 ---
 
@@ -106,13 +117,13 @@ passed to `OpenRatAgent`, it automatically builds an `AgentLoop` and registers t
 ## Registering custom tools
 
 ```python
-from openrat import OpenRatAgent
+from openrat import Openrat
 
 def my_tool(arguments: dict) -> dict:
     # do something
     return {"result": 42}
 
-agent = OpenRatAgent({"provider": "openai_compatible", ...})
+agent = Openrat({"provider": "openai_compatible", ...})
 agent.tool_registry.register("my_tool", my_tool)
 ```
 

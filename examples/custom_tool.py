@@ -9,7 +9,7 @@ Usage:
 """
 
 import os
-from openrat import OpenRatAgent
+from openrat import Openrat
 from openrat.model.types import Message
 
 # ── Custom tool ───────────────────────────────────────────────────────────────
@@ -24,7 +24,7 @@ def read_metrics(arguments: dict) -> dict:
 
 
 # ── Agent setup ───────────────────────────────────────────────────────────────
-agent = OpenRatAgent({
+app = Openrat({
     "executor": "local",
     "provider": "openai_compatible",
     "base_url": "https://api.openai.com/v1",
@@ -33,10 +33,10 @@ agent = OpenRatAgent({
 })
 
 # Register alongside the built-in run_experiment tool
-agent.tool_registry.register("read_metrics", read_metrics)
+app.tool_registry.register("read_metrics", read_metrics)
 
 # ── Run ───────────────────────────────────────────────────────────────────────
-response = agent.chat(
+response = app.chat(
     "What is the current accuracy metric? Then run tests/units/sandbox/fixtures/hello.py.",
     max_turns=6,
 )

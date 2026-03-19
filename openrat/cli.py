@@ -1,6 +1,6 @@
 import argparse
 import sys
-from .api import run, OpenRatAgent
+from .api import Openrat
 from .errors import OpenratError
 
 
@@ -17,8 +17,8 @@ def main(argv=None):
 
     if args.cmd == "run":
         try:
-            agent = OpenRatAgent({"executor": args.executor} if args.executor else None)
-            res = agent.run(args.path, timeout=args.timeout)
+            app = Openrat({"executor": args.executor} if args.executor else None)
+            res = app.run(args.path, timeout=args.timeout)
             print("Result:")
             for k, v in res.items():
                 print(f"{k}: {v}")

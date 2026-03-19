@@ -1,7 +1,7 @@
 """
 Example: LLM agent loop.
 
-The agent uses a language model to decide which experiments to run and
+The app uses a language model to decide which experiments to run and
 summarises the output. The model can call the built-in `run_experiment` tool
 any number of times during the conversation.
 
@@ -12,16 +12,16 @@ Requires a valid API key for the configured provider.
 """
 
 import os
-from openrat import OpenRatAgent
+from openrat import Openrat
 from openrat.model.types import Message
 
 # ── Config ────────────────────────────────────────────────────────────────────
-agent = OpenRatAgent({
+app = Openrat({
     # Execution config
     "executor": "local",          # "docker" for hardened sandbox
     "docker_image": "python:3.11",
 
-    # Model config — required to enable agent.chat()
+    # Model config — required to enable app.chat()
     "provider": "openai_compatible",
     "base_url": "https://api.openai.com/v1",
     "api_key": os.environ.get("OPENAI_API_KEY", ""),
@@ -43,7 +43,7 @@ messages = [
     ),
 ]
 
-response = agent.chat(messages, max_turns=5)
+response = app.chat(messages, max_turns=5)
 
 # ── Output ────────────────────────────────────────────────────────────────────
 print(response.content)
