@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import Any, Dict, Mapping, Tuple
+from collections.abc import Mapping
+from typing import Any
 import json
 import hashlib
 
@@ -15,22 +16,22 @@ class ExperimentSpec:
     serialized to draft/final JSON forms used by planning.
     """
 
-    goals: Tuple[str, ...]
+    goals: tuple[str, ...]
     metrics: Mapping[str, Any]
     tasks: Mapping[str, Mapping[str, Any]]
-    dependencies: Mapping[str, Tuple[str, ...]] = field(default_factory=dict)
+    dependencies: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
     constraints: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "goals", tuple(self.goals))
         object.__setattr__(self, "metrics", MappingProxyType(dict(self.metrics)))
 
-        normalized_tasks: Dict[str, Mapping[str, Any]] = {}
+        normalized_tasks: dict[str, Mapping[str, Any]] = {}
         for task_id, cfg in dict(self.tasks).items():
             normalized_tasks[str(task_id)] = MappingProxyType(dict(cfg))
         object.__setattr__(self, "tasks", MappingProxyType(normalized_tasks))
 
-        normalized_deps: Dict[str, Tuple[str, ...]] = {}
+        normalized_deps: dict[str, tuple[str, ...]] = {}
         for task_id, deps in dict(self.dependencies).items():
             normalized_deps[str(task_id)] = tuple(deps)
         object.__setattr__(self, "dependencies", MappingProxyType(normalized_deps))
@@ -77,7 +78,7 @@ class ExperimentSpec:
                 if dep not in self.tasks:
                     raise UserInputError(f"Task {task_id} depends on unknown task {dep}")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "goals": list(self.goals),
             "metrics": dict(self.metrics),
@@ -86,7 +87,7 @@ class ExperimentSpec:
             "constraints": dict(self.constraints),
         }
 
-    def to_draft_json(self) -> Dict[str, Any]:
+    def to_draft_json(self) -> dict[str, Any]:
         """Deterministic object → draft JSON transformation."""
         return self.to_dict()
 
@@ -94,7 +95,7 @@ class ExperimentSpec:
         payload = json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":")).encode()
         return hashlib.sha256(payload).hexdigest()
 
-    def to_dag_spec(self) -> Dict[str, Any]:
+    def to_dag_spec(self) -> dict[str, Any]:
         """Pure transformation: ExperimentSpec → DAG inputs."""
         self.validate()
 

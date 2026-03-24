@@ -1,3 +1,3 @@
-"""Planning primitives."""
+"""Task planning (internal module)."""
 
 __all__ = []

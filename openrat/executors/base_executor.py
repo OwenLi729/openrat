@@ -1,14 +1,13 @@
-from abc import ABC, abstractmethod
-from typing import Dict, Any
+from collections.abc import Mapping
+from typing import Any
 
 
-class BaseExecutor(ABC):
-    """Abstract executor interface used by the router.
+class BaseExecutor:
+    """Executor interface used by the router.
 
     Executors should perform minimal work synchronously and return a serializable
-    status dict. Long-running or real execution should be handled by a worker/daemon.
+    status mapping. Long-running or real execution should be handled by a worker/daemon.
     """
 
-    @abstractmethod
-    def execute(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def execute(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
         raise NotImplementedError()

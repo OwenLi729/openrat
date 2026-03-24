@@ -1,14 +1,15 @@
-from typing import List, Optional
+from collections.abc import MutableSequence
 
 from .types import Message, ModelResponse, ToolCall
 from openrat.errors import UserInputError, InternalError
+from openrat.protocols import ModelAdapterProtocol, ToolRegistryProtocol
 
 class AgentLoop:
-    def __init__(self, adapter, tool_registry=None):
+    def __init__(self, adapter: ModelAdapterProtocol, tool_registry: ToolRegistryProtocol | None = None):
         self.adapter = adapter
         self.tool_registry = tool_registry
 
-    def run_once(self, messages: List[Message]) -> ModelResponse:
+    def run_once(self, messages: MutableSequence[Message]) -> ModelResponse:
         """One LLM call: generate a response and execute any tool calls."""
         resp: ModelResponse = self.adapter.generate(messages)
         if resp is None:
@@ -26,7 +27,7 @@ class AgentLoop:
 
         return resp
 
-    def run(self, messages: List[Message], max_turns: int = 10) -> ModelResponse:
+    def run(self, messages: MutableSequence[Message], max_turns: int = 10) -> ModelResponse:
         """Drive the loop until the model stops calling tools or max_turns is reached.
 
         Tool results are appended to `messages` in-place so the model sees
@@ -35,7 +36,7 @@ class AgentLoop:
         if not isinstance(max_turns, int) or max_turns <= 0:
             raise UserInputError("max_turns must be a positive integer")
 
-        resp: Optional[ModelResponse] = None
+        resp: ModelResponse | None = None
         for _ in range(max_turns):
             resp = self.run_once(messages)
             if not resp.tool_calls:

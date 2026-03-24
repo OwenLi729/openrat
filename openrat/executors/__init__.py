@@ -1,7 +1,18 @@
 from .docker_executor import ProductionDockerExecutor, DockerExecutor
 from .local_executor import LocalExecutor
-from .registry import ExecutorRegistry
+from .registry import ExecutorRegistry as _ExecutorRegistry
 from openrat.errors import UserInputError
+
+"""Executor registry and policy configuration.
+
+Public API:
+  - ExecutorRegistry: Global singleton for executor registration
+  - set_executor_policy(): Configure default execution strategy ("auto", "production", "stub")
+  - EXECUTOR_POLICY: Current policy configuration
+
+For custom executors, implement ExecutorProtocol and register via:
+  ExecutorRegistry.register("my_executor", MyExecutor())
+"""
 
 # Executor policy controls whether the registry provides production-capable
 # executors or lightweight stubs. Default is 'auto' to prefer production
@@ -13,29 +24,22 @@ def set_executor_policy(mode: str):
 	if mode not in ("stub", "production", "auto"):
 		raise UserInputError("unsupported executor policy mode")
 	EXECUTOR_POLICY["mode"] = mode
-	_REGISTRY.clear()
+	ExecutorRegistry.clear()
 	if mode == "production":
-		_REGISTRY.register("docker", ProductionDockerExecutor())
+		ExecutorRegistry.register("docker", ProductionDockerExecutor())
 	else:
-		_REGISTRY.register("docker", DockerExecutor())
-	_REGISTRY.register("local", LocalExecutor())
+		ExecutorRegistry.register("docker", DockerExecutor())
+	ExecutorRegistry.register("local", LocalExecutor())
 	global EXECUTORS
-	EXECUTORS = {name: _REGISTRY.get(name) for name in _REGISTRY.list()}
+	EXECUTORS = {name: ExecutorRegistry.get(name) for name in ExecutorRegistry.list()}
 
 
 # create registry and pre-register allowed executors
-_REGISTRY = ExecutorRegistry()
+ExecutorRegistry = _ExecutorRegistry()
 set_executor_policy(EXECUTOR_POLICY["mode"])
 
-# backward-compatible mapping
-EXECUTORS = {name: _REGISTRY.get(name) for name in _REGISTRY.list()}
-
 __all__ = [
-	"_REGISTRY",
-	"EXECUTORS",
-	"DockerExecutor",
-	"ProductionDockerExecutor",
-	"LocalExecutor",
+	"ExecutorRegistry",
 	"set_executor_policy",
 	"EXECUTOR_POLICY",
 ]

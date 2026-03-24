@@ -1,13 +1,23 @@
 from pathlib import Path
-from typing import Optional, Dict, Any
+from collections.abc import Mapping
+from typing import Any
 import shutil
 import tempfile
 
 from openrat.executors import LocalExecutor, ProductionDockerExecutor
 from openrat.errors import UserInputError, EnvironmentError
+from openrat.model.types import Message, ModelResponse
+from openrat.protocols import ExecutorProtocol, ToolRegistryProtocol
 
 
-def _validate_experiment_path(path: str) -> Path:
+def validate_experiment_path(path: str) -> Path:
+    """Validate and normalize an experiment file path.
+    
+    Internal utility; not part of public API.
+    
+    Raises:
+        EnvironmentError: If path is outside cwd or does not exist.
+    """
     p = Path(path)
     if not p.exists():
         raise EnvironmentError(f"Experiment file not found: {path}")
@@ -22,7 +32,11 @@ def _validate_experiment_path(path: str) -> Path:
     return p
 
 
-def _choose_executor(preferred: Optional[str], docker_image: str):
+# Backward-compatible alias (private name indicates legacy)
+_validate_experiment_path = validate_experiment_path
+
+
+def _choose_executor(preferred: str | None, docker_image: str) -> ExecutorProtocol:
     # prefer docker when available unless explicitly asked for local
     if preferred is not None and preferred not in {"local", "docker"}:
         raise UserInputError(
@@ -47,14 +61,14 @@ def _choose_executor(preferred: Optional[str], docker_image: str):
     return LocalExecutor()
 
 
-def run(path: str, *, executor: Optional[str] = None, timeout: Optional[int] = None, docker_image: str = "python:3.11", isolate: bool = True, memory: str = "512m", cpus: str = "1.0") -> Dict[str, Any]:
-    """Run an experiment file using the chosen executor.
-
+def run(path: str, *, executor: str | None = None, timeout: int | None = None, docker_image: str = "python:3.11", isolate: bool = True, memory: str = "512m", cpus: str = "1.0") -> Mapping[str, Any]:
+    """Internal direct execution helper (not part of public API).
+    
     By default this will copy the experiment into a per-run ephemeral directory
     and execute inside that directory to limit filesystem access. The runner will
     create separate `code/` (read-only) and `outputs/` (writable) mounts for Docker.
     """
-    p = _validate_experiment_path(path)
+    p = validate_experiment_path(path)
     exec_obj = _choose_executor(executor, docker_image)
 
     if isolate:
@@ -91,32 +105,24 @@ def run(path: str, *, executor: Optional[str] = None, timeout: Optional[int] = N
 
 
 class OpenRatAgent:
-    """Low-level runtime adapter for direct execution and LLM interaction.
+    """Internal runtime adapter (not part of public API).
 
-    This is a legacy public API.
+    Provides direct execution and LLM agent loop capabilities.
+    Internal use only; use Openrat facade for public workflows.
 
-    ``Openrat`` is the recommended public facade for framework workflows
-    (session/spec/plan/artifact). ``OpenRatAgent`` remains public for backward
-    compatibility and advanced use cases that need direct execution or direct
-    LLM tool loops.
-
-    Planning, policy, and approval ownership remains with ``Openrat``.
-
-    Pass only execution keys (``executor``, ``docker_image``) to use the
-    direct execution path via ``agent.run(path)``.
-
-    Pass model keys (``provider``, ``api_key``, ``model_name``, etc.) in
-    addition to enable the LLM agent loop via ``agent.chat(messages)``.
+    Configuration:
+      - Execution keys (``executor``, ``docker_image``) for direct paths
+      - Model keys (``provider``, ``api_key``, ``model_name``) for LLM loop
     """
 
-    def __init__(self, config: Optional[dict] = None):
-        self.config = config or {}
+    def __init__(self, config: Mapping[str, Any] | None = None):
+        self.config = dict(config or {})
         self.executor = self.config.get("executor")
         self.docker_image = self.config.get("docker_image", "python:3.11")
 
         # Build the LLM agent loop only when a model provider is configured.
         self.agent_loop: Any = None
-        self.tool_registry: Any = None
+        self.tool_registry: ToolRegistryProtocol | None = None
         if self.config.get("provider"):
             from openrat.model.factory import ModelFactory
             from openrat.model.agent_loop import AgentLoop
@@ -128,7 +134,7 @@ class OpenRatAgent:
             # Register the execution runner as callable tool for the model.
             _self = self
 
-            def run_experiment(arguments: dict) -> dict:
+            def run_experiment(arguments: Mapping[str, Any]) -> Mapping[str, Any]:
                 path = arguments.get("path")
                 if not path:
                     return {"status": "error", "reason": "path is required"}
@@ -143,19 +149,18 @@ class OpenRatAgent:
             self.tool_registry.register("run_experiment", run_experiment)
             self.agent_loop = AgentLoop(adapter, tool_registry=self.tool_registry)
 
-    def run(self, path: str, timeout: Optional[int] = None, isolate: bool = True, memory: str = "512m", cpus: str = "1.0") -> Dict[str, Any]:
-        """Directly execute an experiment file (non-planned execution path)."""
+    def run(self, path: str, timeout: int | None = None, isolate: bool = True, memory: str = "512m", cpus: str = "1.0") -> Mapping[str, Any]:
+        """Internal direct execution (not part of public API)."""
         return run(path, executor=self.executor, timeout=timeout, docker_image=self.docker_image, isolate=isolate, memory=memory, cpus=cpus)
 
-    def chat(self, messages, max_turns: int = 10):
-        """Drive the LLM agent loop over a conversation.
+    def chat(self, messages: str | list[Message], max_turns: int = 10) -> ModelResponse:
+        """Internal LLM agent loop (not part of public API).
 
         ``messages`` can be:
         - a plain string (converted to a single user Message), or
         - a list of ``openrat.model.types.Message`` objects.
 
-        Requires ``provider`` (and usually ``api_key``, ``model_name``) to be
-        set in the config passed to ``__init__``.
+        Requires ``provider`` (and usually ``api_key``, ``model_name``) in config.
         """
         if self.agent_loop is None:
             raise UserInputError(

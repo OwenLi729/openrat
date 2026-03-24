@@ -1,4 +1,5 @@
-from typing import List, Optional, Dict, Any
+from collections.abc import Mapping, Sequence
+from typing import Any
 import requests
 
 from .base_adapter import BaseModelAdapter
@@ -8,11 +9,16 @@ from ..types import Message, ModelResponse, ToolCall
 class ClaudeAdapter(BaseModelAdapter):
     provider = "claude"
 
-    def __init__(self, api_key: Optional[str], model_name: Optional[str]):
+    def __init__(self, api_key: str | None, model_name: str | None):
         self.api_key = api_key
         self.model_name = model_name
 
-    def generate(self, messages: List[Message], tools: Optional[list] = None, config: Optional[dict] = None) -> ModelResponse:
+    def generate(
+        self,
+        messages: Sequence[Message],
+        tools: Sequence[Mapping[str, Any]] | None = None,
+        config: Mapping[str, Any] | None = None,
+    ) -> ModelResponse:
         # If unconfigured, return a simple stub
         if not self.api_key:
             last = messages[-1].content if messages else None
@@ -24,7 +30,7 @@ class ClaudeAdapter(BaseModelAdapter):
 
         content_items = data.get("content", [])
         text_parts = []
-        calls: List[ToolCall] = []
+        calls: list[ToolCall] = []
         for item in content_items:
             t = item.get("type")
             if t == "text":

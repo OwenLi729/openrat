@@ -1,8 +1,9 @@
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, Mapping, Tuple
+from collections.abc import Iterable, Mapping
+from typing import Any
 from uuid import UUID, uuid4
 
-from openrat.core.instructions import ExperimentSpec
+from openrat.core.experiment_spec import ExperimentSpec
 from openrat.core.session.session import Session
 from openrat.errors import PolicyViolation
 from openrat.tasks.dag.dag import DAG
@@ -23,7 +24,7 @@ class Plan:
     id: UUID
     spec_hash: str
     dag: DAG
-    actions: Tuple[ProposedAction, ...]
+    actions: tuple[ProposedAction, ...]
     requires_approval: bool
 
     @classmethod
@@ -39,7 +40,7 @@ class Plan:
 
         capability_by_tool = dict(tool_capabilities or {})
 
-        actions = []
+        actions: list[ProposedAction] = []
         for task_id in sorted(spec.tasks.keys()):
             cfg = spec.tasks[task_id]
             tool_name = str(cfg["tool"])
@@ -68,7 +69,7 @@ class Plan:
             requires_approval=requires_approval,
         )
 
-    def preview(self) -> Iterable[Dict[str, Any]]:
+    def preview(self) -> Iterable[Mapping[str, Any]]:
         for action in self.actions:
             yield {
                 "task_id": action.task_id,

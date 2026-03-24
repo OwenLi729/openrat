@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Set
 from uuid import UUID, uuid4
 
 from openrat.core.governance.autonomy import AutonomyLevel
@@ -12,8 +11,8 @@ class Session:
 
     autonomy: AutonomyLevel
     patch_policy: str  # "disabled" | "interactive" | "auto"
-    user_approvals: Set[str] = field(default_factory=set)
-    used_capabilities: Set[str] = field(default_factory=set)
+    user_approvals: set[str] = field(default_factory=set)
+    used_capabilities: set[str] = field(default_factory=set)
     id: UUID = field(default_factory=uuid4)
 
     def __post_init__(self) -> None:

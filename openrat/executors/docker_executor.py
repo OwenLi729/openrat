@@ -1,4 +1,5 @@
-from typing import Dict, Any, Optional, List
+from collections.abc import Mapping
+from typing import Any
 from .base_executor import BaseExecutor
 import subprocess
 import time
@@ -17,7 +18,7 @@ def _to_text(value: Any) -> str:
 class DockerExecutor(BaseExecutor):
     """Stubbed Docker executor that returns a scheduling acknowledgement."""
 
-    def execute(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def execute(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
         return {
             "status": "scheduled",
             "executor": "docker",
@@ -37,7 +38,7 @@ class ProductionDockerExecutor(BaseExecutor):
     def __init__(self, image: str = "python:3.11"):
         self.image = image
 
-    def _build_docker_cmd(self, command: List[str], payload: Dict[str, Any]) -> List[str]:
+    def _build_docker_cmd(self, command: list[str], payload: Mapping[str, Any]) -> list[str]:
         # payload may contain 'code_dir' and 'outputs_dir' (host paths), and 'limits'
         code_dir = payload.get("code_dir")
         outputs_dir = payload.get("outputs_dir")
@@ -83,7 +84,7 @@ class ProductionDockerExecutor(BaseExecutor):
         cmd += command
         return cmd
 
-    def execute(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def execute(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
         command = payload.get("command")
         timeout = payload.get("timeout")
         cwd = payload.get("cwd")

@@ -1,8 +1,14 @@
 from dataclasses import dataclass, field
-from typing import Mapping, Sequence, Any
+from collections.abc import Mapping, Sequence
+from typing import TYPE_CHECKING, Any
 from types import MappingProxyType
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
+
+if TYPE_CHECKING:
+    from openrat.core.session.session import Session
+    from openrat.tasks.dag.dag import DAG
+    from openrat.tasks.plan.plan import Plan
 
 
 @dataclass(frozen=True)
@@ -46,9 +52,9 @@ class Artifact:
     def from_dag_execution(
         cls,
         *,
-        dag,
-        plan,
-        session,
+        dag: "DAG",
+        plan: "Plan",
+        session: "Session",
         logs: Sequence[str] = (),
         metrics: Mapping[str, Any] | None = None,
         diagnostics: Mapping[str, Any] | None = None,
@@ -81,7 +87,7 @@ class Artifact:
             },
         )
     
-    def summarize(self) -> dict:
+    def summarize(self) -> dict[str, Any]:
         return {
             "id": str(self.id),
             "status": self.evaluations.get("status"),
@@ -94,7 +100,7 @@ class Artifact:
 
     #Minimal serialization:
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": str(self.id),
             "created_at": self.created_at.isoformat(),

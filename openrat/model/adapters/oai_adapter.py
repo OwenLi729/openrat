@@ -1,4 +1,5 @@
-from typing import List, Optional, Dict, Any
+from collections.abc import Mapping, Sequence
+from typing import Any
 import uuid
 import requests
 import json
@@ -10,13 +11,13 @@ from ..types import Message, ModelResponse, ToolCall
 class OpenAICompatibleAdapter(BaseModelAdapter):
     provider = "openai_compatible"
 
-    def __init__(self, base_url: Optional[str], api_key: Optional[str], model_name: Optional[str]):
+    def __init__(self, base_url: str | None, api_key: str | None, model_name: str | None):
         self.base_url = base_url
         self.api_key = api_key
         self.model_name = model_name
 
-    def _parse_tool_calls(self, message_obj: Dict[str, Any]) -> List[ToolCall]:
-        calls: List[ToolCall] = []
+    def _parse_tool_calls(self, message_obj: Mapping[str, Any]) -> list[ToolCall]:
+        calls: list[ToolCall] = []
 
         # New-style explicit tool_calls array
         if isinstance(message_obj.get("tool_calls"), list):
@@ -47,7 +48,12 @@ class OpenAICompatibleAdapter(BaseModelAdapter):
 
         return calls
 
-    def generate(self, messages: List[Message], tools: Optional[list] = None, config: Optional[dict] = None) -> ModelResponse:
+    def generate(
+        self,
+        messages: Sequence[Message],
+        tools: Sequence[Mapping[str, Any]] | None = None,
+        config: Mapping[str, Any] | None = None,
+    ) -> ModelResponse:
         # If adapter is unconfigured, return a harmless stub response (no network)
         if not self.base_url or not self.api_key:
             last = messages[-1].content if messages else None

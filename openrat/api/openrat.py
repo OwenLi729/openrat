@@ -1,8 +1,12 @@
-from typing import Any, Mapping, Optional, TYPE_CHECKING
+from collections.abc import Iterable, Mapping
+from typing import Any, TYPE_CHECKING
 
 from openrat.core.artifact import Artifact
-from openrat.core.instructions import ExperimentSpec
+from openrat.core.governance.autonomy import AutonomyLevel
+from openrat.core.experiment_spec import ExperimentSpec
 from openrat.core.session.session import Session
+from openrat.model.types import Message, ModelResponse
+from openrat.protocols import ToolProtocol, ToolRegistryProtocol
 from openrat.tasks.plan.plan import Plan
 
 if TYPE_CHECKING:
@@ -22,7 +26,7 @@ class Openrat:
     are direct (non-planned) execution paths.
     """
 
-    def __init__(self, config: Optional[dict] = None):
+    def __init__(self, config: Mapping[str, Any] | None = None):
         self._config = dict(config or {})
         self._agent: "OpenRatAgent | None" = None
 
@@ -34,7 +38,7 @@ class Openrat:
         return self._agent
 
     @property
-    def tool_registry(self):
+    def tool_registry(self) -> ToolRegistryProtocol | None:
         """Compatibility access to the low-level tool registry.
 
         This property is provided for advanced/legacy flows that register tools
@@ -46,11 +50,11 @@ class Openrat:
     def run(
         self,
         path: str,
-        timeout: Optional[int] = None,
+        timeout: int | None = None,
         isolate: bool = True,
         memory: str = "512m",
         cpus: str = "1.0",
-    ):
+    ) -> Mapping[str, Any]:
         """Direct compatibility path (non-planned execution)."""
         return self._ensure_agent().run(
             path,
@@ -60,11 +64,17 @@ class Openrat:
             cpus=cpus,
         )
 
-    def chat(self, messages, max_turns: int = 10):
+    def chat(self, messages: str | list[Message], max_turns: int = 10) -> ModelResponse:
         """Direct compatibility path to the low-level LLM agent loop."""
         return self._ensure_agent().chat(messages, max_turns=max_turns)
 
-    def create_session(self, *, autonomy, patch_policy: str, user_approvals=None) -> Session:
+    def create_session(
+        self,
+        *,
+        autonomy: AutonomyLevel,
+        patch_policy: str,
+        user_approvals: Iterable[str] | None = None,
+    ) -> Session:
         return Session(
             autonomy=autonomy,
             patch_policy=patch_policy,
@@ -82,7 +92,7 @@ class Openrat:
     ) -> Plan:
         return Plan.build(spec, session, tool_capabilities=tool_capabilities)
 
-    def execute_plan(self, plan: Plan, session: Session, tools: Mapping[str, Any]) -> Artifact:
+    def execute_plan(self, plan: Plan, session: Session, tools: Mapping[str, ToolProtocol]) -> Artifact:
         plan.assert_executable()
         plan.dag.execute(tools=tools, session=session)
         return Artifact.from_dag_execution(

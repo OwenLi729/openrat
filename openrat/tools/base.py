@@ -1,12 +1,13 @@
 from dataclasses import dataclass
-from typing import Any, Dict
+from collections.abc import Mapping
+from typing import Any
 from openrat.errors import UserInputError, PolicyViolation
 
 
 @dataclass
 class ToolProposal:
     tool_name: str
-    payload: Dict[str, Any]
+    payload: Mapping[str, Any]
 
 
 class BaseTool:
@@ -14,10 +15,10 @@ class BaseTool:
     description = ""
     required_autonomy_level = 0
 
-    def __init__(self, governance=None):
+    def __init__(self, governance: Any = None):
         self.governance = governance
 
-    def validate(self, proposal: ToolProposal):
+    def validate(self, proposal: ToolProposal) -> bool:
         # check proposal type
         if not isinstance(proposal, ToolProposal):
             raise UserInputError("proposal must be a ToolProposal")

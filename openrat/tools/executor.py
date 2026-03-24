@@ -1,14 +1,23 @@
 from pathlib import Path
-from typing import Dict, Any
+from collections.abc import Mapping
+from typing import Any
 
 from .base import BaseTool, ToolProposal
 import openrat.executors as _executors
-from openrat.executors import _REGISTRY
+# Note: This tool layer imports from framework for executor registry access.
+# Acceptable because tools are registered dynamically at runtime (not module load time).
+# Future: could provide callback injection to invert this dependency.
+from openrat.executors import ExecutorRegistry
 from openrat.executors.docker_executor import ProductionDockerExecutor
 from openrat.errors import UserInputError, PolicyViolation, ExecutionError
 
 
 class Executor(BaseTool):
+    """Tool integration for executor registry.
+    
+    This tool provides LLM agents with access to the executor registry.
+    Semi-internal: available as a built-in tool, not for direct instantiation.
+    """
 
     name = "Executor"
     description = "route execution proposals to registered executors"
@@ -17,7 +26,7 @@ class Executor(BaseTool):
     DEFAULT_WHITELIST = {"python", "bash"}
     MAX_TIMEOUT = 3600
 
-    def _validate_payload(self, payload: Dict[str, Any]):
+    def _validate_payload(self, payload: Mapping[str, Any]) -> None:
         if not isinstance(payload, dict):
             raise UserInputError("payload must be a dict")
 
@@ -28,7 +37,7 @@ class Executor(BaseTool):
 
         executor_type = payload.get("executor_type")
         try:
-            _REGISTRY.get(executor_type)
+            ExecutorRegistry.get(executor_type)
         except KeyError:
             raise UserInputError(f"unknown executor_type: {executor_type}")
 
@@ -64,7 +73,7 @@ class Executor(BaseTool):
             if not isinstance(timeout, (int, float)) or timeout <= 0 or timeout > self.MAX_TIMEOUT:
                 raise UserInputError(f"timeout must be >0 and <= {self.MAX_TIMEOUT}")
 
-    def execute(self, proposal: ToolProposal) -> Dict[str, Any]:
+    def execute(self, proposal: ToolProposal) -> Mapping[str, Any]:
         self.validate(proposal)
 
         if hasattr(self.governance, "authorize_execution"):
@@ -92,7 +101,7 @@ class Executor(BaseTool):
                 backend = ProductionDockerExecutor()
 
         if backend is None:
-            backend = _REGISTRY.get(payload["executor_type"])
+            backend = ExecutorRegistry.get(payload["executor_type"])
 
         try:
             result = backend.execute(spec)

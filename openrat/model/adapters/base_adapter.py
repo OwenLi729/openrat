@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 
-from typing import List, Optional
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 from ..types import Message, ModelResponse, ToolCall
 
@@ -13,8 +14,8 @@ class BaseModelAdapter(ABC):
     @abstractmethod
     def generate(
         self,
-        messages: List[Message],
-        tools: Optional[list] = None,
-        config: Optional[dict] = None,
+        messages: Sequence[Message],
+        tools: Sequence[Mapping[str, Any]] | None = None,
+        config: Mapping[str, Any] | None = None,
     ) -> ModelResponse:
         raise NotImplementedError()

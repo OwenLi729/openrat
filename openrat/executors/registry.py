@@ -1,14 +1,14 @@
-from typing import Dict
+from collections.abc import Mapping
 from .base_executor import BaseExecutor
 
 
 class ExecutorRegistry:
     """Registry for pre-registered executors. No dynamic creation allowed."""
 
-    def __init__(self):
-        self._backends: Dict[str, BaseExecutor] = {}
+    def __init__(self) -> None:
+        self._backends: dict[str, BaseExecutor] = {}
 
-    def register(self, name: str, backend: BaseExecutor):
+    def register(self, name: str, backend: BaseExecutor) -> None:
         if name in self._backends:
             raise KeyError(f"executor '{name}' already registered")
         self._backends[name] = backend
@@ -19,8 +19,8 @@ class ExecutorRegistry:
         except KeyError:
             raise KeyError(f"executor '{name}' not found")
 
-    def list(self):
+    def list(self) -> list[str]:
         return list(self._backends.keys())
 
-    def clear(self):
+    def clear(self) -> None:
         self._backends.clear()

@@ -1,11 +1,19 @@
 from importlib import import_module
 
-__all__ = ["Openrat", "OpenRatAgent", "run"]
+"""OpenRat API entry points.
+
+Public API:
+  - Openrat: Primary framework facade
+
+Internal runtime (not for external use):
+  - OpenRatAgent: Low-level runtime adapter
+  - run(): Direct execution helper
+"""
+
+__all__ = ["Openrat"]
 
 _EXPORTS = {
 	"Openrat": ("openrat.api.openrat", "Openrat"),
-	"OpenRatAgent": ("openrat.api.runner", "OpenRatAgent"),
-	"run": ("openrat.api.runner", "run"),
 }
 
 

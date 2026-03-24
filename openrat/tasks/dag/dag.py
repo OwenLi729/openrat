@@ -1,15 +1,17 @@
 from datetime import datetime, timezone
-from typing import Dict, Iterable, Mapping, Any
+from collections.abc import Iterable, Mapping
+from typing import Any
 
 from openrat.errors import UserInputError, InternalError, PolicyViolation
+from openrat.protocols import SessionProtocol, ToolProtocol
 from openrat.tasks.dag.task import Task, TaskExecution, TaskState
 
 
 class DAG:
     def __init__(
         self,
-        tasks: Dict[str, Task],
-        edges: Dict[str, Iterable[str]],
+        tasks: Mapping[str, Task],
+        edges: Mapping[str, Iterable[str]],
     ):
         """Execution graph for tasks and dependencies."""
         self.tasks = dict(tasks)
@@ -49,7 +51,7 @@ class DAG:
         for task_id in self.tasks:
             visit(task_id)
 
-    def _build_reverse_edges(self):
+    def _build_reverse_edges(self) -> dict[str, set[str]]:
         reverse = {task_id: set() for task_id in self.tasks}
         for task_id, deps in self.edges.items():
             for dep in deps:
@@ -86,7 +88,7 @@ class DAG:
             record.finished_at = datetime.now(timezone.utc)
             record.error = error
 
-    def execute(self, tools: Mapping[str, Any], session) -> Dict[str, TaskExecution]:
+    def execute(self, tools: Mapping[str, ToolProtocol], session: SessionProtocol) -> dict[str, TaskExecution]:
         """Execute authorized tasks in dependency order.
 
         Policy decisions are delegated exclusively to the provided session.

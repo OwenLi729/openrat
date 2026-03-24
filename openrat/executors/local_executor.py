@@ -1,4 +1,5 @@
-from typing import Dict, Any
+from collections.abc import Mapping
+from typing import Any
 from .base_executor import BaseExecutor
 
 try:
@@ -15,7 +16,7 @@ class LocalExecutor(BaseExecutor):
     ``openrat.executors.local_executor.run_command`` to avoid real subprocesses.
     """
 
-    def execute(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def execute(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
         # Resolve at call time so tests can patch the module-level name.
         import openrat.executors.local_executor as _self_mod
         _run_cmd = _self_mod.run_command

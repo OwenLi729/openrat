@@ -7,7 +7,7 @@ import pytest
 root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(root))
 
-from openrat.executors import EXECUTORS
+from openrat.executors import ExecutorRegistry
 from openrat.tools.executor import Executor
 from openrat.tools.base import ToolProposal
 
@@ -32,7 +32,7 @@ def make_payload(executor_type):
 
 
 def test_registry_contains_expected():
-    assert "docker" in EXECUTORS
+    assert "docker" in ExecutorRegistry.list()
 
 
 def test_tools_executor_routes_all(monkeypatch):
@@ -63,7 +63,7 @@ def test_tools_executor_routes_all(monkeypatch):
     completed = subprocess.CompletedProcess(args=["docker"], returncode=0, stdout="ok", stderr="")
     monkeypatch.setattr("subprocess.run", lambda *a, **k: completed)
 
-    for name in list(EXECUTORS.keys()):
+    for name in list(ExecutorRegistry.list()):
         payload = make_payload(name)
         proposal = ToolProposal(tool_name="executor", payload=payload)
         res = tool.execute(proposal)

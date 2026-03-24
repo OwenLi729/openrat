@@ -5,7 +5,7 @@ import pytest
 root = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(root))
 
-from openrat.core.instructions import ExperimentSpec
+from openrat.core.experiment_spec import ExperimentSpec
 from openrat.errors import UserInputError
 
 

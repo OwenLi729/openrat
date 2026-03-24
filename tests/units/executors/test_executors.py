@@ -7,12 +7,12 @@ import subprocess
 root = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(root))
 
-from openrat.executors import EXECUTORS
+from openrat.executors import ExecutorRegistry
 from openrat.executors.docker_executor import ProductionDockerExecutor
 
 
 def test_docker_executor_schedulable():
-    docker = EXECUTORS.get("docker")
+    docker = ExecutorRegistry.get("docker")
     assert docker is not None
     payload = {"command": ["python", "a.py"], "cwd": ".", "timeout": 5}
     res = docker.execute(payload)
@@ -21,7 +21,7 @@ def test_docker_executor_schedulable():
 
 
 def test_local_executor_calls_run_command(monkeypatch):
-    local = EXECUTORS.get("local")
+    local = ExecutorRegistry.get("local")
     assert local is not None
 
     class DummyResult:

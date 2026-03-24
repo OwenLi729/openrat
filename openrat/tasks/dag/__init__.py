@@ -1,3 +1,3 @@
-"""DAG task execution primitives."""
+"""DAG execution (internal module)."""
 
 __all__ = []

@@ -10,7 +10,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from openrat.api.runner import OpenRatAgent, _validate_experiment_path
+from openrat.api.runner import OpenRatAgent, validate_experiment_path
 from openrat.errors import UserInputError, EnvironmentError
 from openrat.model.types import Message, ModelResponse, ToolCall
 from openrat.tools.registry import ToolRegistry
@@ -223,11 +223,11 @@ def test_chat_drives_run_experiment_tool(monkeypatch):
     assert adapter.call_count == 2
 
 
-# ── _validate_experiment_path ──────────────────────────────────────────────────
+# ── validate_experiment_path ──────────────────────────────────────────────────
 
 def test_validate_path_file_not_found():
     with pytest.raises(EnvironmentError):
-        _validate_experiment_path("/tmp/does_not_exist_openrat_test.py")
+        validate_experiment_path("/tmp/does_not_exist_openrat_test.py")
 
 
 def test_validate_path_outside_cwd_raises():
@@ -236,14 +236,14 @@ def test_validate_path_outside_cwd_raises():
         fpath = f.name
     try:
         with pytest.raises(EnvironmentError, match="current working directory"):
-            _validate_experiment_path(fpath)
+            validate_experiment_path(fpath)
     finally:
         os.unlink(fpath)
 
 
 def test_validate_path_inside_cwd_returns_resolved():
     # Use a real fixture file that lives inside the repo (cwd)
-    p = _validate_experiment_path(str(FIXTURES_DIR / "hello.py"))
+    p = validate_experiment_path(str(FIXTURES_DIR / "hello.py"))
     assert p.is_absolute()
     assert p.exists()
 

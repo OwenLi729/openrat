@@ -97,7 +97,7 @@ def test_backend_exception_raises_execution_error(monkeypatch):
         def execute(self, spec):
             raise RuntimeError("backend crashed")
 
-    monkeypatch.setattr(executor_mod._REGISTRY, "get", lambda name: BoomBackend())
+    monkeypatch.setattr(executor_mod.ExecutorRegistry, "get", lambda name: BoomBackend())
 
     project_root = Path(__file__).resolve().parents[3]
     payload = {

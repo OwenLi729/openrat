@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any
+from collections.abc import Mapping
+from typing import Any
 
 
 @dataclass
@@ -12,20 +13,20 @@ class Message:
 class ToolCall:
     id: str
     name: str
-    arguments: Dict[str, Any]
+    arguments: Mapping[str, Any]
 
 
 @dataclass
 class ModelResponse:
-    content: Optional[str]
-    tool_calls: List[ToolCall] = field(default_factory=list)
-    stop_reason: Optional[str] = None
-    raw: Optional[Dict[str, Any]] = None
+    content: str | None
+    tool_calls: list[ToolCall] = field(default_factory=list)
+    stop_reason: str | None = None
+    raw: Mapping[str, Any] | None = None
 
 
 @dataclass
 class ModelConfig:
     provider: str
-    api_key: Optional[str] = None
-    base_url: Optional[str] = None
-    model_name: Optional[str] = None
+    api_key: str | None = None
+    base_url: str | None = None
+    model_name: str | None = None
