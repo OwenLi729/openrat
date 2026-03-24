@@ -11,6 +11,11 @@ class ToolProposal:
 
 
 class BaseTool:
+    """Base class for custom tools callable by LLM agents.
+    
+    Subclass this to extend the framework with domain-specific tools.
+    Override `name`, `description`, and `required_autonomy_level` in subclasses.
+    """
     name = "BaseTool"
     description = ""
     required_autonomy_level = 0

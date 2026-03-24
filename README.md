@@ -61,31 +61,62 @@ Privacy & security
 * Autonomy and permissions are enforced by policy, not by the model
 
 
-What Openrat is not
-* ❌ A SaaS builder
-* ❌ A fully autonomous coding agent
+## Development
 
-✅ It is a trustworthy research assistant that automates experiments while keeping you in control.
+Run tests:
 
-
-## API entry points
-
-Use `Openrat` as the recommended public API.
-
-```python
-from openrat import Openrat
-
-app = Openrat({"executor": "local"})
-
-session = app.create_session(autonomy=..., patch_policy="interactive")
-spec = app.spec_from_final_json(final_json)
-plan = app.build_plan(spec, session)
-artifact = app.execute_plan(plan, session, tools=my_tools)
+```bash
+pytest tests/ -q
 ```
 
-`OpenRatAgent` remains public as a low-level/legacy API for direct execution and
-direct LLM loop control. `Openrat.run()` and `Openrat.chat()` are compatibility
-forwards for non-planned paths.
+Set executor policy to production (default is `auto`):
+
+```bash
+Pytesting with EXECUTOR_POLICY=production pytest tests/
+```
+
+
+## Framework Workflow
+
+`Openrat` is the recommended API for all use cases:
+
+```python
+from openrat import Openrat, ExperimentSpec, Session
+
+# Create a session (defines autonomy and governance)
+session = Session(autonomy_level=0)
+
+# Define your experiment
+spec = ExperimentSpec(
+    goals=["Train model", "Evaluate"],
+    metrics=["accuracy"],
+    tasks=[...],
+)
+
+# Create the framework instance
+app = Openrat({"executor": "local"})
+
+# Build a plan (with policy approval checks)
+plan = app.build_plan(spec, session)
+
+# Execute the plan
+artifact = app.execute_plan(plan, session)
+```
+
+**For LLM-driven workflows:**
+
+```python
+# Configure with a model provider
+app = Openrat({
+    "executor": "local",
+    "provider": "openai_compatible",
+    "api_key": "sk-...",
+    "model_name": "gpt-4o",
+})
+
+# Chat with the model (enables tool calls to run experiments)
+response = app.chat("Run experiments/train.py and summarize results")
+```
 
 
 ## Executor policy

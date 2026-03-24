@@ -1,8 +1,8 @@
 """
-Example: direct experiment execution (no LLM).
+Example: Direct experiment execution.
 
-Uses the recommended Openrat facade. `run()` here is the direct, non-planned
-compatibility path forwarded to the low-level runtime.
+Demonstrates the simplest Openrat use case: execute an experiment file
+and capture the output.
 
 Usage:
     python examples/run_experiment.py
@@ -19,6 +19,7 @@ app = Openrat({
 })
 
 # ── Run ───────────────────────────────────────────────────────────────────────
+# Direct execution (without planning or LLM)
 result = app.run(
     "tests/units/sandbox/fixtures/hello.py",   # path relative to cwd
     timeout=30,

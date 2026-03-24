@@ -14,16 +14,15 @@ if TYPE_CHECKING:
 
 
 class Openrat:
-    """Recommended public facade for Openrat framework workflows.
+    """Framework facade for experiment orchestration.
 
-    Core workflow ownership lives here:
-    1) create a ``Session``,
-    2) construct an ``ExperimentSpec``,
-    3) build a ``Plan``,
-    4) execute plan -> ``Artifact``.
+    Orchestrates the workflow:
+    1. create_session() — define autonomy and governance
+    2. build_plan() — construct execution plan from spec
+    3. execute_plan() — execute with policy approval
 
-    ``run()`` and ``chat()`` are compatibility forwards to ``OpenRatAgent`` and
-    are direct (non-planned) execution paths.
+    Also provides direct execution (app.run()) and LLM loops (app.chat())
+    for convenience, though the framework workflow is recommended.
     """
 
     def __init__(self, config: Mapping[str, Any] | None = None):

@@ -7,6 +7,10 @@ from openrat.errors import UserInputError
 
 
 class ToolRegistry:
+    """Registry for named tools callable by LLM agents.
+    
+    Tools are callables that accept a dict of arguments and return a dict result.
+    """
     def __init__(self) -> None:
         self._tools: dict[str, Callable[[Mapping[str, Any]], Mapping[str, Any]]] = {}
 

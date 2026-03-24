@@ -13,6 +13,10 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class Artifact:
+    """Immutable result of experiment execution.
+    
+    Contains observations, evaluations, logs, and metadata from a completed run.
+    """
     id: UUID
     created_at: datetime
 

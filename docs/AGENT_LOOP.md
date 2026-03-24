@@ -1,36 +1,16 @@
 # LLM Agent Loop
 
-This document explains how `AgentLoop` and `Openrat.chat()` work together
-to drive a multi-turn LLM loop.
-
-`Openrat` is the recommended API. `OpenRatAgent` remains available as a
-low-level/legacy runtime adapter.
-
----
+This document explains how `Openrat.chat()` drives a multi-turn LLM loop with tool execution.
 
 ## Overview
 
-```
-Openrat.chat(messages)
-        │
-        ▼
-  OpenRatAgent.chat(...)  (forwarded compatibility path)
-    │
-    ▼
-  AgentLoop.run(messages, max_turns=10)
-        │
-        ├── turn 1: adapter.generate(messages)
-        │       ├── model returns text → done, return response
-        │       └── model returns tool_calls
-        │               └── ToolRegistry.execute(name, arguments)
-        │                       └── registered tool function(arguments) → result
-        │               └── append Message(role="tool", content=result) to messages
-        │
-        ├── turn 2: adapter.generate(messages)  ← model sees tool result
-        │       └── ... repeat ...
-        │
-        └── stop when no tool_calls OR max_turns reached
-```
+The LLM loop executes as follows:
+
+1. Send messages and available tools to the model
+2. Model responds with:
+   - Final text → return response
+   - Tool calls → execute tools, append results, repeat
+3. Stop when model finishes or max turns reached
 
 ---
 
@@ -48,26 +28,21 @@ app = Openrat({
     "api_key": "sk-...",
     "model_name": "gpt-4o",
 })
+## Enabling the loop
+
+Pass a model provider to `Openrat`:
+
+```python
+from openrat import Openrat
+
+app = Openrat({
+    "provider": "openai_compatible",  # or "claude" or "gemini"
+    "api_key": "sk-...",
+    "model_name": "gpt-4o",
+})
 ```
 
-Without `provider`, `app.run(path)` (direct execution) still works but
-`app.chat()` will raise `UserInputError`.
-
----
-
-## Sending messages
-
-`app.chat()` accepts:
-
-- A plain string (converted to `Message(role="user", content=...)`):
-  ```python
-  response = app.chat("Run experiments/train.py and summarise the output.")
-  ```
-- A list of `Message` objects (for multi-turn context):
-  ```python
-  from openrat.model.types import Message
-
-  response = app.chat([
+Without a model provider, `app.chat()` will raise an error. Direct execution via `app.run()` works without a model
       Message(role="system", content="You are a research assistant."),
       Message(role="user",   content="Run experiments/train.py."),
   ])
@@ -84,7 +59,7 @@ print(response.stop_reason)  # e.g. "end_turn", "max_turns"
 
 ## Built-in tool: run_experiment
 
-When a model provider is configured, the low-level runtime automatically registers a
+When a model provider is configured, `Openrat` automatically registers a
 `run_experiment` tool. The model can call it with:
 
 ```json
