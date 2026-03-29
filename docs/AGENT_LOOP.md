@@ -98,7 +98,7 @@ def fetch_metric(arguments: dict) -> dict:
     # ... load from DB / file / API ...
     return {"metric": name, "value": 0.92}
 
-app.tool_registry.register("fetch_metric", fetch_metric)
+app.tool_registry.register("fetch_metric", fetch_metric, capability="observe")
 
 response = app.chat("Fetch accuracy and then run experiments/eval.py")
 ```

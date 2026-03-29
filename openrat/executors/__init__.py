@@ -1,45 +1,40 @@
-from .docker_executor import ProductionDockerExecutor, DockerExecutor
-from .local_executor import LocalExecutor
-from .registry import ExecutorRegistry as _ExecutorRegistry
-from openrat.errors import UserInputError
+"""Executor backends and registry.
 
-"""Executor registry and policy configuration.
+Internal module: Contains Docker and local execution strategies. Users
+should not import from this module directly.
 
-Public API:
-  - ExecutorRegistry: Global singleton for executor registration
-  - set_executor_policy(): Configure default execution strategy ("auto", "production", "stub")
-  - EXECUTOR_POLICY: Current policy configuration
-
-For custom executors, implement ExecutorProtocol and register via:
-  ExecutorRegistry.register("my_executor", MyExecutor())
+Executor configuration is handled via Openrat config dict:
+    from openrat import Openrat
+    
+    app = Openrat({
+        "executor": "docker",
+        "docker_image": "python:3.11",
+        "memory": "512m",
+        "cpus": "1.0",
+    })
 """
 
-# Executor policy controls whether the registry provides production-capable
-# executors or lightweight stubs. Default is 'auto' to prefer production
-# execution for sandboxed runs while keeping registry bindings deterministic.
-EXECUTOR_POLICY = {"mode": "auto"}
+from .docker_executor import DockerExecutor
+from .registry import ExecutorRegistry as _ExecutorRegistry
+from openrat.core.errors import UserInputError
+
+EXECUTOR_POLICY = {"mode": "production"}
 
 
 def set_executor_policy(mode: str):
-	if mode not in ("stub", "production", "auto"):
-		raise UserInputError("unsupported executor policy mode")
-	EXECUTOR_POLICY["mode"] = mode
-	ExecutorRegistry.clear()
-	if mode == "production":
-		ExecutorRegistry.register("docker", ProductionDockerExecutor())
-	else:
-		ExecutorRegistry.register("docker", DockerExecutor())
-	ExecutorRegistry.register("local", LocalExecutor())
-	global EXECUTORS
-	EXECUTORS = {name: ExecutorRegistry.get(name) for name in ExecutorRegistry.list()}
+    if mode not in ("production", "auto"):
+        raise UserInputError("unsupported executor policy mode; only 'production' is allowed")
+    EXECUTOR_POLICY["mode"] = "production"
+    ExecutorRegistry.clear()
+    ExecutorRegistry.register("docker", DockerExecutor())
 
 
-# create registry and pre-register allowed executors
 ExecutorRegistry = _ExecutorRegistry()
-set_executor_policy(EXECUTOR_POLICY["mode"])
+set_executor_policy("production")
 
 __all__ = [
-	"ExecutorRegistry",
-	"set_executor_policy",
-	"EXECUTOR_POLICY",
+    "ExecutorRegistry",
+    "set_executor_policy",
+    "EXECUTOR_POLICY",
+    "DockerExecutor",
 ]

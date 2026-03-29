@@ -1,73 +1,39 @@
 import sys
 from pathlib import Path
 import subprocess
-import pytest
 
 # ensure project root
 root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(root))
 
 from openrat.executors import ExecutorRegistry
-from openrat.tools.executor import Executor
-from openrat.tools.base import ToolProposal
+from openrat.tools.executor import ExecutorTool
+from openrat.core.governance.autonomy import AutonomyLevel
+from openrat.core.session.session import Session
 
 
-class MockGovernance:
-    def __init__(self, autonomy_level=0, allow=True):
-        self.autonomy_level = autonomy_level
-        self._allow = allow
-
-    def authorize_execution(self, proposal):
-        return self._allow
+def test_registry_contains_only_docker():
+    assert ExecutorRegistry.list() == ["docker"]
 
 
-def make_payload(executor_type):
+def test_tools_executor_routes_to_docker(monkeypatch):
+    tool = ExecutorTool()
+    
     project_root = Path(__file__).resolve().parents[2]
-    return {
-        "executor_type": executor_type,
-        "command": ["python", "script.py"],
-        "cwd": str(project_root / "sandbox"),
-        "timeout": 1,
-    }
+    
+    # Create session with observe-level autonomy
+    session = Session(autonomy=AutonomyLevel.OBSERVE, patch_policy="disabled", user_approvals={"observe"})
 
-
-def test_registry_contains_expected():
-    assert "docker" in ExecutorRegistry.list()
-
-
-def test_tools_executor_routes_all(monkeypatch):
-    gov = MockGovernance(allow=True)
-    tool = Executor(gov)
-
-    # stub local run_command
-    class DummyResult:
-        def __init__(self):
-            self.return_code = 0
-            self.stdout = "ok"
-            self.stderr = ""
-            self.start_time = 0
-            self.end_time = 1
-            self.timed_out = False
-
-        @property
-        def duration(self):
-            return self.end_time - self.start_time
-
-        @property
-        def succeeded(self):
-            return self.return_code == 0 and not self.timed_out
-
-    monkeypatch.setattr("openrat.executors.local_executor.run_command", lambda *a, **k: DummyResult())
-
-    # stub subprocess.run for docker_prod
+    # stub subprocess.run for docker
     completed = subprocess.CompletedProcess(args=["docker"], returncode=0, stdout="ok", stderr="")
     monkeypatch.setattr("subprocess.run", lambda *a, **k: completed)
 
-    for name in list(ExecutorRegistry.list()):
-        payload = make_payload(name)
-        proposal = ToolProposal(tool_name="executor", payload=payload)
-        res = tool.execute(proposal)
-        assert res is not None
-        # production docker should run and return the subprocess return code
-        if name == "docker":
-            assert res.get("return_code") == 0
+    payload = {
+        "executor_type": "docker",
+        "command": ["python", "script.py"],
+        "cwd": str(project_root),
+        "timeout": 1,
+    }
+    res = tool.run(payload, session)
+    assert res["executor"] == "docker"
+    assert res["return_code"] == 0

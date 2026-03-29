@@ -9,8 +9,7 @@ Usage:
 """
 
 import os
-from openrat import Openrat
-from openrat.model.types import Message
+from openrat import Openrat, Message
 
 # ── Custom tool ───────────────────────────────────────────────────────────────
 def read_metrics(arguments: dict) -> dict:
@@ -25,7 +24,8 @@ def read_metrics(arguments: dict) -> dict:
 
 # ── Agent setup ───────────────────────────────────────────────────────────────
 app = Openrat({
-    "executor": "local",
+    "executor": "docker",
+    "docker_image": "python:3.11",
     "provider": "openai_compatible",
     "base_url": "https://api.openai.com/v1",
     "api_key": os.environ.get("OPENAI_API_KEY", ""),
@@ -33,7 +33,7 @@ app = Openrat({
 })
 
 # Register alongside the built-in run_experiment tool
-app.tool_registry.register("read_metrics", read_metrics)
+app.tool_registry.register("read_metrics", read_metrics, capability="observe")
 
 # ── Run ───────────────────────────────────────────────────────────────────────
 response = app.chat(

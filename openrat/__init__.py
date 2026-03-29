@@ -24,6 +24,9 @@ __all__ = [
 	"Artifact",
 	"ExperimentSpec",
 	"Session",
+	"Message",
+	"ModelResponse",
+	"AutonomyLevel",
 ]
 
 
@@ -33,6 +36,9 @@ _EXPORTS = {
 	"Artifact": ("openrat.core.artifact", "Artifact"),
 	"ExperimentSpec": ("openrat.core.experiment_spec", "ExperimentSpec"),
 	"Session": ("openrat.core.session.session", "Session"),
+	"Message": ("openrat.model.types", "Message"),
+	"ModelResponse": ("openrat.model.types", "ModelResponse"),
+	"AutonomyLevel": ("openrat.core.governance.autonomy", "AutonomyLevel"),
 }
 
 

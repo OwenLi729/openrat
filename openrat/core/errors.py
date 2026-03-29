@@ -1,3 +1,9 @@
+"""Canonical error types for the Openrat framework.
+
+All Openrat-specific exceptions live here. The package-root
+``openrat.errors`` module re-exports everything from this module
+for backward compatibility.
+"""
 from __future__ import annotations
 
 from typing import Optional

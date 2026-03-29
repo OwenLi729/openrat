@@ -8,7 +8,7 @@ sys.path.insert(0, str(root))
 
 from openrat import Openrat, BaseTool
 from openrat.core.governance.autonomy import AutonomyLevel
-from openrat.errors import PolicyViolation
+from openrat.core.errors import PolicyViolation
 from openrat.tasks.dag.task import TaskState
 
 
@@ -27,7 +27,7 @@ class ModifyTool(BaseTool):
 
 
 def test_spec_plan_dag_artifact_flow_end_to_end():
-    app = Openrat({"executor": "local"})
+    app = Openrat({"executor": "docker"})
 
     spec = app.spec_from_final_json(
         {
@@ -64,11 +64,12 @@ def test_spec_plan_dag_artifact_flow_end_to_end():
     assert summary["status"] == "success"
     assert summary["patches_applied"] == 0
     assert artifact.to_dict()["observations"]["t1"]["observed"] == "alpha"
+    assert "governance" in artifact.to_dict()["diagnostics"]
     assert isinstance(artifact.logs, tuple)
 
 
 def test_openrat_execute_plan_requires_approved_plan():
-    app = Openrat({"executor": "local"})
+    app = Openrat({"executor": "docker"})
 
     spec = app.spec_from_final_json(
         {

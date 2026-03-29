@@ -5,7 +5,7 @@ from typing import Any
 import json
 import hashlib
 
-from openrat.errors import UserInputError
+from openrat.core.errors import UserInputError
 
 
 @dataclass(frozen=True)

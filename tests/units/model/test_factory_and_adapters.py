@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from openrat.model.factory import ModelFactory
 from openrat.model.types import Message
-from openrat.errors import UserInputError
+from openrat.core.errors import UserInputError
 
 
 def test_factory_creates_adapters_and_generate():

@@ -1,9 +1,29 @@
 """Tool framework for extensibility.
 
-BaseTool: Base class for custom tools callable by LLM agents.
-ToolRegistry: Registry for named tool implementations.
+Concrete tools:
+- ExecutorTool
+- LogReaderTool
+- FileInspectorTool
+- PatchProposalTool
 
-All tools are accessible via the main openrat package.
+Core primitives:
+- BaseTool
+- ToolRegistry
 """
 
-__all__ = ["BaseTool", "ToolRegistry"]
+from .base import BaseTool
+from .registry import ToolRegistry
+from .executor import ExecutorTool, Executor
+from .log_reader import LogReaderTool
+from .file_inspector import FileInspectorTool
+from .patch_proposal import PatchProposalTool
+
+__all__ = [
+    "BaseTool",
+    "ToolRegistry",
+    "ExecutorTool",
+    "Executor",
+    "LogReaderTool",
+    "FileInspectorTool",
+    "PatchProposalTool",
+]

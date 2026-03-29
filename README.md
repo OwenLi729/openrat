@@ -38,6 +38,23 @@ Openrat uses graduated autonomy levels, enforced outside the model:
 
 Openrat cannot increase its own autonomy. All permissions are user‑controlled and auditable.
 
+Governance is configured via `Session`:
+
+```python
+from openrat import Openrat, Session, AutonomyLevel
+
+# Allow only observation (run, diagnose)
+session = Session(
+    autonomy=AutonomyLevel.OBSERVE,
+    patch_policy="disabled"
+)
+
+# Build and execute plan within governance constraints
+app = Openrat({"executor": "docker", "docker_image": "python:3.11"})
+plan = app.build_plan(spec, session)
+artifact = app.execute_plan(plan)
+```
+
 
 Experiment chaining & branching (coming soon)
 Openrat can:
@@ -94,7 +111,7 @@ spec = ExperimentSpec(
 )
 
 # Create the framework instance
-app = Openrat({"executor": "local"})
+app = Openrat({"executor": "docker", "docker_image": "python:3.11"})
 
 # Build a plan (with policy approval checks)
 plan = app.build_plan(spec, session)
@@ -108,7 +125,8 @@ artifact = app.execute_plan(plan, session)
 ```python
 # Configure with a model provider
 app = Openrat({
-    "executor": "local",
+    "executor": "docker",
+    "docker_image": "python:3.11",
     "provider": "openai_compatible",
     "api_key": "sk-...",
     "model_name": "gpt-4o",
@@ -121,26 +139,15 @@ response = app.chat("Run experiments/train.py and summarize results")
 
 ## Executor policy
 
-Executor selection is configurable via a runtime policy. This allows tests and
-deployments to control whether lightweight stubs or production-capable backends
-are used.
-
-- Default policy: `auto` — prefers production executors for sandboxed `docker`
-  runs while keeping stub bindings for other paths.
-- Other modes: `stub` (always use stub backends), `production` (register
-  production-capable backends).
-
-Example usage:
+All execution is routed through the `DockerExecutor`, which runs scripts in an
+ephemeral container with `--network none`, `--security-opt no-new-privileges`,
+`--pids-limit 100`, and configurable memory/CPU limits. There is no local or
+stub execution path in production.
 
 ```python
 from openrat.executors import set_executor_policy
 
-# switch to production executors (useful in CI to exercise real paths)
-set_executor_policy("production")
-
-# or force stub bindings for fast unit tests
-set_executor_policy("stub")
+# Both modes register the DockerExecutor (the only available backend)
+set_executor_policy("production")   # explicit
+set_executor_policy("auto")          # default
 ```
-
-Note: the `EXECUTOR_POLICY` value is exported from the `executors` package and
-can be inspected at runtime.

@@ -16,30 +16,15 @@ def _to_text(value: Any) -> str:
 
 
 class DockerExecutor(BaseExecutor):
-    """Stubbed Docker executor that returns a scheduling acknowledgement."""
+    """Production Docker executor.
 
-    def execute(self, payload: Mapping[str, Any]) -> Mapping[str, Any]:
-        return {
-            "status": "scheduled",
-            "executor": "docker",
-            "command": payload.get("command"),
-            "cwd": payload.get("cwd"),
-            "timeout": payload.get("timeout"),
-        }
-
-
-class ProductionDockerExecutor(BaseExecutor):
-    """A production executor that runs the command inside a Docker container.
-
-    This uses the `docker` CLI and returns a serializable result dictionary.
-    Unit tests should monkeypatch `subprocess.run` to avoid invoking Docker.
+    All Openrat execution is expected to route through this executor.
     """
 
     def __init__(self, image: str = "python:3.11"):
         self.image = image
 
     def _build_docker_cmd(self, command: list[str], payload: Mapping[str, Any]) -> list[str]:
-        # payload may contain 'code_dir' and 'outputs_dir' (host paths), and 'limits'
         code_dir = payload.get("code_dir")
         outputs_dir = payload.get("outputs_dir")
         limits = payload.get("limits", {}) or {}
@@ -61,7 +46,6 @@ class ProductionDockerExecutor(BaseExecutor):
             f"{uid}:{gid}",
         ]
 
-        # resource limits
         mem = limits.get("memory")
         cpus = limits.get("cpus")
         if mem:
@@ -69,16 +53,13 @@ class ProductionDockerExecutor(BaseExecutor):
         if cpus:
             cmd += ["--cpus", str(cpus)]
 
-        # mounts: mount code as read-only at /code, outputs as rw at /outputs
         if code_dir:
             cmd += ["-v", f"{Path(code_dir)}:/code:ro"]
         if outputs_dir:
             cmd += ["-v", f"{Path(outputs_dir)}:/outputs:rw"]
 
-        # set working directory inside container to /outputs if provided
-        workdir = "/outputs" if outputs_dir else None
-        if workdir:
-            cmd += ["-w", workdir]
+        if outputs_dir:
+            cmd += ["-w", "/outputs"]
 
         cmd += [self.image]
         cmd += command
@@ -113,7 +94,7 @@ class ProductionDockerExecutor(BaseExecutor):
 
         return {
             "status": "completed" if return_code == 0 and not timed_out else "failed",
-            "executor": "docker_prod",
+            "executor": "docker",
             "command": docker_cmd,
             "cwd": cwd,
             "timeout": timeout,
@@ -123,3 +104,6 @@ class ProductionDockerExecutor(BaseExecutor):
             "timed_out": timed_out,
             "duration": end - start,
         }
+
+
+ProductionDockerExecutor = DockerExecutor

@@ -2,8 +2,8 @@ from datetime import datetime, timezone
 from collections.abc import Iterable, Mapping
 from typing import Any
 
-from openrat.errors import UserInputError, InternalError, PolicyViolation
-from openrat.protocols import SessionProtocol, ToolProtocol
+from openrat.core.errors import UserInputError, InternalError, PolicyViolation
+from openrat.core.protocols import SessionProtocol, ToolProtocol
 from openrat.tasks.dag.task import Task, TaskExecution, TaskState
 
 
@@ -115,7 +115,12 @@ class DAG:
                 capability = getattr(tool, "capability", "observe")
 
                 try:
-                    allowed = session.authorize(capability, dry_run=False)
+                    allowed = session.authorize(
+                        capability,
+                        dry_run=False,
+                        action="dag.execute.task",
+                        metadata={"task_id": task_id, "tool": task.tool_name},
+                    )
                 except PolicyViolation as exc:
                     self._transition(task_id, TaskState.SKIPPED, error=str(exc))
                     progress = True

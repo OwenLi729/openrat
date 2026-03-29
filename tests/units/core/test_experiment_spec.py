@@ -6,7 +6,7 @@ root = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(root))
 
 from openrat.core.experiment_spec import ExperimentSpec
-from openrat.errors import UserInputError
+from openrat.core.errors import UserInputError
 
 
 def _valid_spec_payload():

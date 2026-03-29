@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from openrat.model.agent_loop import AgentLoop
 from openrat.model.types import Message, ModelResponse, ToolCall
 from openrat.tools.registry import ToolRegistry
-from openrat.errors import UserInputError, InternalError
+from openrat.core.errors import UserInputError, InternalError
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -74,7 +74,7 @@ def test_run_exits_immediately_when_no_tool_calls():
 def test_run_stops_at_max_turns():
     adapter = _AdapterAlwaysTools()
     reg = ToolRegistry()
-    reg.register("noop", lambda args: {"ok": True})
+    reg.register("noop", lambda args: {"ok": True}, capability="observe")
     loop = AgentLoop(adapter, tool_registry=reg)
     messages = [Message(role="user", content="go")]
     resp = loop.run(messages, max_turns=3)
@@ -86,7 +86,7 @@ def test_run_stops_at_max_turns():
 def test_run_two_turns_tool_then_done():
     adapter = _AdapterToolThenDone()
     reg = ToolRegistry()
-    reg.register("greet", lambda args: {"greeting": f"hello {args['name']}"})
+    reg.register("greet", lambda args: {"greeting": f"hello {args['name']}"}, capability="observe")
     loop = AgentLoop(adapter, tool_registry=reg)
     messages = [Message(role="user", content="start")]
     resp = loop.run(messages, max_turns=5)
@@ -105,7 +105,7 @@ def test_run_tool_error_appended_as_tool_message():
     def failing_tool(args):
         raise ValueError("something went wrong")
 
-    reg.register("greet", failing_tool)
+    reg.register("greet", failing_tool, capability="observe")
     loop = AgentLoop(adapter, tool_registry=reg)
     messages = [Message(role="user", content="start")]
     resp = loop.run(messages, max_turns=5)
@@ -138,7 +138,7 @@ def test_run_returns_last_response():
     """run() must always return a ModelResponse, even when max_turns reached."""
     adapter = _AdapterAlwaysTools()
     reg = ToolRegistry()
-    reg.register("noop", lambda args: {})
+    reg.register("noop", lambda args: {}, capability="observe")
     loop = AgentLoop(adapter, tool_registry=reg)
     resp = loop.run([Message(role="user", content="x")], max_turns=1)
     assert isinstance(resp, ModelResponse)

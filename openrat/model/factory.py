@@ -4,8 +4,8 @@ from typing import Any
 from .adapters.oai_adapter import OpenAICompatibleAdapter
 from .adapters.claude_adapter import ClaudeAdapter
 from .adapters.gemini_adapter import GeminiAdapter
-from openrat.errors import UserInputError
-from openrat.protocols import ModelAdapterProtocol
+from openrat.core.errors import UserInputError
+from openrat.core.protocols import ModelAdapterProtocol
 
 
 class ModelFactory:

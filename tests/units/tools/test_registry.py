@@ -6,12 +6,12 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from openrat.tools.registry import ToolRegistry
-from openrat.errors import UserInputError
+from openrat.core.errors import UserInputError
 
 
 def test_register_and_execute_happy_path():
     reg = ToolRegistry()
-    reg.register("add", lambda args: {"result": args["a"] + args["b"]})
+    reg.register("add", lambda args: {"result": args["a"] + args["b"]}, capability="observe")
     result = reg.execute("add", {"a": 3, "b": 4})
     assert result == {"result": 7}
 
@@ -24,8 +24,8 @@ def test_execute_unknown_tool_raises_user_input_error():
 
 def test_list_returns_registered_names():
     reg = ToolRegistry()
-    reg.register("tool_a", lambda args: {})
-    reg.register("tool_b", lambda args: {})
+    reg.register("tool_a", lambda args: {}, capability="observe")
+    reg.register("tool_b", lambda args: {}, capability="observe")
     names = reg.list()
     assert "tool_a" in names
     assert "tool_b" in names
@@ -39,7 +39,7 @@ def test_list_empty_on_fresh_registry():
 def test_get_returns_callable():
     reg = ToolRegistry()
     fn = lambda args: {"ok": True}
-    reg.register("my_tool", fn)
+    reg.register("my_tool", fn, capability="observe")
     assert reg.get("my_tool") is fn
 
 
@@ -56,7 +56,7 @@ def test_execute_passes_arguments_correctly():
         return {"captured": True}
 
     reg = ToolRegistry()
-    reg.register("capture", capture)
+    reg.register("capture", capture, capability="observe")
     reg.execute("capture", {"key": "value", "num": 42})
     assert received == {"key": "value", "num": 42}
 
@@ -64,8 +64,8 @@ def test_execute_passes_arguments_correctly():
 def test_register_overwrites_existing_tool():
     """Registering the same name twice should replace the first tool."""
     reg = ToolRegistry()
-    reg.register("t", lambda args: {"v": 1})
-    reg.register("t", lambda args: {"v": 2})
+    reg.register("t", lambda args: {"v": 1}, capability="observe")
+    reg.register("t", lambda args: {"v": 2}, capability="observe")
     assert reg.execute("t", {}) == {"v": 2}
 
 
@@ -74,6 +74,12 @@ def test_execute_propagates_tool_exception():
         raise RuntimeError("tool failed")
 
     reg = ToolRegistry()
-    reg.register("boom", boom)
+    reg.register("boom", boom, capability="observe")
     with pytest.raises(RuntimeError, match="tool failed"):
         reg.execute("boom", {})
+
+
+def test_register_requires_explicit_capability():
+    reg = ToolRegistry()
+    with pytest.raises(UserInputError, match="must declare"):
+        reg.register("missing", lambda args: {})

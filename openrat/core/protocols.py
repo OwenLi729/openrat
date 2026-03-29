@@ -1,3 +1,8 @@
+"""Canonical structural protocols (interfaces) for the Openrat framework.
+
+The package-root ``openrat.protocols`` module re-exports everything from
+here for backward compatibility.
+"""
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Mapping, Protocol, Sequence
@@ -10,7 +15,14 @@ JSONLike = Mapping[str, Any]
 
 
 class SessionProtocol(Protocol):
-    def authorize(self, capability: str, dry_run: bool = False) -> bool: ...
+    def authorize(
+        self,
+        capability: str,
+        dry_run: bool = False,
+        *,
+        action: str | None = None,
+        metadata: Mapping[str, Any] | None = None,
+    ) -> bool: ...
 
 
 class ToolProtocol(Protocol):
@@ -28,12 +40,9 @@ class RegisteredToolCallable(Protocol):
 
 
 class ToolRegistryProtocol(Protocol):
-    def register(self, name: str, tool: RegisteredToolCallable) -> None: ...
-
+    def register(self, name: str, tool: RegisteredToolCallable, capability: str | None = None) -> None: ...
     def get(self, name: str) -> RegisteredToolCallable | None: ...
-
     def list(self) -> list[str]: ...
-
     def execute(self, name: str, arguments: Mapping[str, Any]) -> Mapping[str, Any]: ...
 
 
@@ -46,3 +55,14 @@ class ModelAdapterProtocol(Protocol):
         tools: Sequence[Mapping[str, Any]] | None = None,
         config: Mapping[str, Any] | None = None,
     ) -> "ModelResponse": ...
+
+
+__all__ = [
+    "JSONLike",
+    "SessionProtocol",
+    "ToolProtocol",
+    "ExecutorProtocol",
+    "RegisteredToolCallable",
+    "ToolRegistryProtocol",
+    "ModelAdapterProtocol",
+]

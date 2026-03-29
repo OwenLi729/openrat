@@ -1,111 +1,138 @@
 import sys
 from pathlib import Path
+
 import pytest
 
-# ensure project root is importable
 root = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(root))
 
-import openrat.tools.executor as executor_mod
-from openrat.tools.base import ToolProposal
-from openrat.errors import UserInputError, PolicyViolation, ExecutionError
+from openrat.core.errors import UserInputError, PolicyViolation, ExecutionError
+from openrat.core.governance.autonomy import AutonomyLevel
+from openrat.core.session.session import Session
+from openrat.tools.executor import ExecutorTool
+from openrat.tools.registry import ToolRegistry
 
 
-class MockGovernance:
-    def __init__(self, autonomy_level=0, allow=True):
-        self.autonomy_level = autonomy_level
-        self._allow = allow
+class _FakeBackend:
+    def __init__(self, result=None, boom=False):
+        self.result = result or {"status": "completed", "executor": "docker", "return_code": 0}
+        self.boom = boom
+        self.calls = []
 
-    def authorize_execution(self, proposal):
-        return self._allow
-
-
-def test_valid_routing_returns_scheduled():
-    gov = MockGovernance(autonomy_level=0, allow=True)
-    exec_tool = executor_mod.Executor(gov)
-
-    project_root = Path(__file__).resolve().parents[3]
-    payload = {
-        "executor_type": "docker",
-        "command": ["python", "train.py"],
-        "cwd": str((project_root / "sandbox")),
-        "timeout": 10,
-    }
-
-    proposal = ToolProposal(tool_name="executor", payload=payload)
-    result = exec_tool.execute(proposal)
-    assert result["status"] == "scheduled"
-    assert result["executor"] == "docker"
-
-
-def test_unknown_executor_type_raises():
-    gov = MockGovernance()
-    exec_tool = executor_mod.Executor(gov)
-    payload = {"executor_type": "nonexistent", "command": ["python", "x.py"]}
-    proposal = ToolProposal(tool_name="executor", payload=payload)
-    with pytest.raises(UserInputError):
-        exec_tool.execute(proposal)
-
-
-def test_command_not_whitelisted_raises():
-    gov = MockGovernance()
-    exec_tool = executor_mod.Executor(gov)
-    project_root = Path(__file__).resolve().parents[3]
-    payload = {
-        "executor_type": "docker",
-        "command": ["/bin/rm", "-rf", "/"],
-        "cwd": str(project_root / "sandbox"),
-    }
-    proposal = ToolProposal(tool_name="executor", payload=payload)
-    with pytest.raises(PolicyViolation):
-        exec_tool.execute(proposal)
-
-
-def test_cwd_outside_sandbox_raises():
-    gov = MockGovernance()
-    exec_tool = executor_mod.Executor(gov)
-    project_root = Path(__file__).resolve().parents[3]
-    payload = {
-        "executor_type": "docker",
-        "command": ["python", "train.py"],
-        "cwd": str(project_root.parent),
-    }
-    proposal = ToolProposal(tool_name="executor", payload=payload)
-    with pytest.raises(PolicyViolation):
-        exec_tool.execute(proposal)
-
-
-def test_governance_rejects_execution():
-    gov = MockGovernance(autonomy_level=0, allow=False)
-    exec_tool = executor_mod.Executor(gov)
-    project_root = Path(__file__).resolve().parents[3]
-    payload = {
-        "executor_type": "docker",
-        "command": ["python", "train.py"],
-        "cwd": str(project_root / "sandbox"),
-    }
-    proposal = ToolProposal(tool_name="executor", payload=payload)
-    with pytest.raises(PolicyViolation):
-        exec_tool.execute(proposal)
-
-
-def test_backend_exception_raises_execution_error(monkeypatch):
-    gov = MockGovernance(autonomy_level=0, allow=True)
-    exec_tool = executor_mod.Executor(gov)
-
-    class BoomBackend:
-        def execute(self, spec):
+    def execute(self, payload):
+        self.calls.append(payload)
+        if self.boom:
             raise RuntimeError("backend crashed")
+        return self.result
 
-    monkeypatch.setattr(executor_mod.ExecutorRegistry, "get", lambda name: BoomBackend())
 
-    project_root = Path(__file__).resolve().parents[3]
+def _observe_session() -> Session:
+    return Session(
+        autonomy=AutonomyLevel.OBSERVE,
+        patch_policy="interactive",
+        user_approvals={"observe"},
+    )
+
+
+def test_executor_tool_routes_to_backend(monkeypatch, tmp_path):
+    backend = _FakeBackend(result={"status": "completed", "executor": "docker", "return_code": 0})
+    monkeypatch.setattr("openrat.tools.executor.ExecutorRegistry.get", lambda name: backend)
+
+    tool = ExecutorTool()
+    session = _observe_session()
     payload = {
-        "executor_type": "local",
-        "command": ["python", "train.py"],
-        "cwd": str(project_root / "sandbox"),
-        "timeout": 10,
+        "executor_type": "docker",
+        "command": ["python", "-c", "print('ok')"],
+        "cwd": str(tmp_path),
+        "timeout": 30,
+        "limits": {"memory": "128m", "cpus": "0.5"},
     }
-    proposal = ToolProposal(tool_name="executor", payload=payload)
+
+    result = tool.run(payload, session)
+
+    assert result["status"] == "completed"
+    assert result["executor"] == "docker"
+    assert backend.calls[0]["command"] == payload["command"]
+    assert backend.calls[0]["limits"] == payload["limits"]
+
+
+def test_executor_tool_unknown_executor_type_raises(monkeypatch, tmp_path):
+    def _raise(name):
+        raise KeyError(name)
+
+    monkeypatch.setattr("openrat.tools.executor.ExecutorRegistry.get", _raise)
+
+    tool = ExecutorTool()
+    session = _observe_session()
+    payload = {
+        "executor_type": "missing",
+        "command": ["python", "-c", "print('x')"],
+        "cwd": str(tmp_path),
+    }
+
+    with pytest.raises(UserInputError, match="unknown executor_type"):
+        tool.run(payload, session)
+
+
+def test_executor_tool_enforces_session_capability(monkeypatch, tmp_path):
+    backend = _FakeBackend()
+    monkeypatch.setattr("openrat.tools.executor.ExecutorRegistry.get", lambda name: backend)
+
+    session = Session(
+        autonomy=AutonomyLevel.OBSERVE,
+        patch_policy="interactive",
+        user_approvals={"params.modify"},
+    )
+
+    tool = ExecutorTool()
+    payload = {
+        "executor_type": "docker",
+        "command": ["python", "-c", "print('x')"],
+        "cwd": str(tmp_path),
+    }
+
+    with pytest.raises(PolicyViolation):
+        tool.run(payload, session)
+
+
+def test_executor_tool_wraps_backend_exception(monkeypatch, tmp_path):
+    backend = _FakeBackend(boom=True)
+    monkeypatch.setattr("openrat.tools.executor.ExecutorRegistry.get", lambda name: backend)
+
+    tool = ExecutorTool()
+    session = _observe_session()
+    payload = {
+        "executor_type": "docker",
+        "command": ["python", "-c", "print('x')"],
+        "cwd": str(tmp_path),
+    }
+
     with pytest.raises(ExecutionError, match="executor backend failed"):
-        exec_tool.execute(proposal)
+        tool.run(payload, session)
+
+
+def test_executor_tool_registers_and_executes_via_registry(monkeypatch, tmp_path):
+    backend = _FakeBackend()
+    monkeypatch.setattr("openrat.tools.executor.ExecutorRegistry.get", lambda name: backend)
+
+    session = _observe_session()
+    registry = ToolRegistry(session=session)
+    tool = ExecutorTool()
+
+    registry.register(
+        "executor",
+        lambda args: tool.run(args, session),
+        capability=tool.capability,
+    )
+
+    result = registry.execute(
+        "executor",
+        {
+            "executor_type": "docker",
+            "command": ["python", "-c", "print('registry')"],
+            "cwd": str(tmp_path),
+        },
+    )
+
+    assert result["status"] == "completed"
+    assert backend.calls

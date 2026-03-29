@@ -6,7 +6,7 @@ from openrat.core.governance.autonomy import AutonomyLevel
 from openrat.core.experiment_spec import ExperimentSpec
 from openrat.core.session.session import Session
 from openrat.model.types import Message, ModelResponse
-from openrat.protocols import ToolProtocol, ToolRegistryProtocol
+from openrat.core.protocols import ToolProtocol, ToolRegistryProtocol
 from openrat.tasks.plan.plan import Plan
 
 if TYPE_CHECKING:
@@ -38,11 +38,15 @@ class Openrat:
 
     @property
     def tool_registry(self) -> ToolRegistryProtocol | None:
-        """Compatibility access to the low-level tool registry.
+        """Low-level tool registry (internal extension point).
 
-        This property is provided for advanced/legacy flows that register tools
-        for the direct LLM loop path. It is not part of the planned
-        session/spec/plan/artifact workflow.
+        This property is provided for advanced use cases that register custom tools
+        for the LLM loop. It is not part of the planned session/spec/plan/artifact
+        workflow and should be considered internal — subject to change.
+
+        For most use cases, use the framework workflow instead:
+            plan = app.build_plan(spec, session)
+            artifact = app.execute_plan(plan)
         """
         return getattr(self._ensure_agent(), "tool_registry", None)
 
@@ -100,6 +104,6 @@ class Openrat:
             session=session,
             logs=(),
             metrics={},
-            diagnostics={},
-            patches_applied=(),
+            diagnostics={"governance": session.governance_report()},
+            patches_applied=tuple(p.get("patch_id", "") for p in session.patches_applied),
         )

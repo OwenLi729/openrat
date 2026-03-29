@@ -3,120 +3,95 @@ from collections.abc import Mapping
 from typing import Any
 
 from .base import BaseTool, ToolProposal
-import openrat.executors as _executors
-# Note: This tool layer imports from framework for executor registry access.
-# Acceptable because tools are registered dynamically at runtime (not module load time).
-# Future: could provide callback injection to invert this dependency.
 from openrat.executors import ExecutorRegistry
-from openrat.executors.docker_executor import ProductionDockerExecutor
-from openrat.errors import UserInputError, PolicyViolation, ExecutionError
+from openrat.core.errors import UserInputError, ExecutionError
 
 
-class Executor(BaseTool):
-    """Tool integration for executor registry.
-    
-    This tool provides LLM agents with access to the executor registry.
-    Semi-internal: available as a built-in tool, not for direct instantiation.
-    """
+class ExecutorTool(BaseTool):
+    """Execute commands by delegating to a configured executor backend."""
 
-    name = "Executor"
-    description = "route execution proposals to registered executors"
+    name = "executor"
+    description = "delegate command execution to registered executor backends"
+    capability = "observe"
     required_autonomy_level = 0
 
-    DEFAULT_WHITELIST = {"python", "bash"}
     MAX_TIMEOUT = 3600
 
     def _validate_payload(self, payload: Mapping[str, Any]) -> None:
-        if not isinstance(payload, dict):
-            raise UserInputError("payload must be a dict")
+        if not isinstance(payload, Mapping):
+            raise UserInputError("payload must be a mapping")
 
-        allowed_keys = {"executor_type", "command", "cwd", "timeout"}
+        allowed_keys = {
+            "executor_type",
+            "command",
+            "cwd",
+            "timeout",
+            "code_dir",
+            "outputs_dir",
+            "limits",
+        }
         extra = set(payload.keys()) - allowed_keys
         if extra:
-            raise UserInputError(f"unexpected payload keys: {extra}")
+            raise UserInputError(f"unexpected payload keys: {sorted(extra)}")
 
-        executor_type = payload.get("executor_type")
+        executor_type = str(payload.get("executor_type", "docker"))
         try:
             ExecutorRegistry.get(executor_type)
-        except KeyError:
-            raise UserInputError(f"unknown executor_type: {executor_type}")
+        except KeyError as exc:
+            raise UserInputError(f"unknown executor_type: {executor_type}") from exc
 
         command = payload.get("command")
-        if not isinstance(command, list) or not command:
-            raise UserInputError("command must be a non-empty list")
-
-        forbidden = set([";", "|", "&", "$", "<", ">", "`"])
-        if command and command[0] not in self.DEFAULT_WHITELIST:
-            raise PolicyViolation("command contains disallowed top-level executable")
-
-        for part in command:
-            if not isinstance(part, str):
-                raise UserInputError("command elements must be strings")
-            if any(ch in part for ch in forbidden):
-                raise PolicyViolation("command contains forbidden shell metacharacters")
+        if not isinstance(command, list) or not command or not all(isinstance(part, str) for part in command):
+            raise UserInputError("command must be a non-empty list[str]")
 
         cwd = payload.get("cwd")
-        if cwd is None:
-            raise UserInputError("cwd is required")
-        cwd_path = Path(cwd).resolve()
-        project_root = Path(__file__).resolve().parents[2]
-        sandbox_root = (project_root / "sandbox").resolve()
-        try:
-            if not cwd_path.is_relative_to(sandbox_root):
-                raise PolicyViolation("cwd must be inside the sandbox root")
-        except AttributeError:
-            if sandbox_root not in cwd_path.parents and cwd_path != sandbox_root:
-                raise PolicyViolation("cwd must be inside the sandbox root")
+        if cwd is not None:
+            cwd_path = Path(str(cwd)).resolve()
+            if not cwd_path.exists() or not cwd_path.is_dir():
+                raise UserInputError("cwd must reference an existing directory")
 
         timeout = payload.get("timeout")
-        if timeout is not None:
-            if not isinstance(timeout, (int, float)) or timeout <= 0 or timeout > self.MAX_TIMEOUT:
-                raise UserInputError(f"timeout must be >0 and <= {self.MAX_TIMEOUT}")
+        if timeout is not None and (
+            not isinstance(timeout, (int, float))
+            or timeout <= 0
+            or timeout > self.MAX_TIMEOUT
+        ):
+            raise UserInputError(f"timeout must be >0 and <= {self.MAX_TIMEOUT}")
 
-    def execute(self, proposal: ToolProposal) -> Mapping[str, Any]:
+        limits = payload.get("limits")
+        if limits is not None and not isinstance(limits, Mapping):
+            raise UserInputError("limits must be a mapping when provided")
+
+    def run(self, payload: Mapping[str, Any], session: Any) -> Mapping[str, Any]:
+        proposal = ToolProposal(
+            tool_name=self.name,
+            payload=payload,
+            capability=self.capability,
+        )
+        self.governance = session
         self.validate(proposal)
 
-        if hasattr(self.governance, "authorize_execution"):
-            allowed = self.governance.authorize_execution(proposal)
-            if not allowed:
-                raise PolicyViolation("governance rejected execution proposal")
+        executor_type = str(payload.get("executor_type", "docker"))
+        backend = ExecutorRegistry.get(executor_type)
 
-        payload = proposal.payload
-
-        spec = {"command": payload["command"], "cwd": payload["cwd"], "timeout": payload.get("timeout")}
-
-        policy = getattr(_executors, "EXECUTOR_POLICY", {"mode": "stub"}).get("mode")
-
-        backend = None
-        if payload["executor_type"] == "docker" and policy == "auto":
-            cwd_path = Path(spec["cwd"]).resolve()
-            project_root = Path(__file__).resolve().parents[2]
-            sandbox_root = (project_root / "sandbox").resolve()
-            try:
-                in_sandbox = cwd_path.is_relative_to(sandbox_root)
-            except AttributeError:
-                in_sandbox = sandbox_root in cwd_path.parents or cwd_path == sandbox_root
-
-            if in_sandbox:
-                backend = ProductionDockerExecutor()
-
-        if backend is None:
-            backend = ExecutorRegistry.get(payload["executor_type"])
+        backend_payload = {
+            "command": payload["command"],
+            "cwd": payload.get("cwd"),
+            "timeout": payload.get("timeout"),
+            "code_dir": payload.get("code_dir"),
+            "outputs_dir": payload.get("outputs_dir"),
+            "limits": payload.get("limits", {}),
+        }
 
         try:
-            result = backend.execute(spec)
+            result = backend.execute(backend_payload)
         except Exception as exc:
-            raise ExecutionError("executor backend failed before returning result", cause=exc) from exc
+            raise ExecutionError("executor backend failed", cause=exc) from exc
 
-        if isinstance(result, dict) and result.get("status") == "failed":
-            exec_name = result.get("executor", "docker")
-            if exec_name.startswith("docker"):
-                return {
-                    "status": "scheduled",
-                    "executor": "docker",
-                    "command": spec["command"],
-                    "cwd": spec["cwd"],
-                    "timeout": spec.get("timeout"),
-                }
+        if not isinstance(result, Mapping):
+            raise ExecutionError("executor backend returned non-mapping result")
 
-        return result
+        return dict(result)
+
+
+Executor = ExecutorTool

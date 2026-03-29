@@ -4,10 +4,12 @@ from typing import Any
 import shutil
 import tempfile
 
-from openrat.executors import LocalExecutor, ProductionDockerExecutor
-from openrat.errors import UserInputError, EnvironmentError
+from openrat.core.governance.autonomy import AutonomyLevel
+from openrat.core.session.session import Session
+from openrat.executors import DockerExecutor
+from openrat.core.errors import UserInputError, EnvironmentError
 from openrat.model.types import Message, ModelResponse
-from openrat.protocols import ExecutorProtocol, ToolRegistryProtocol
+from openrat.core.protocols import ExecutorProtocol, ToolRegistryProtocol
 
 
 def validate_experiment_path(path: str) -> Path:
@@ -37,28 +39,19 @@ _validate_experiment_path = validate_experiment_path
 
 
 def _choose_executor(preferred: str | None, docker_image: str) -> ExecutorProtocol:
-    # prefer docker when available unless explicitly asked for local
-    if preferred is not None and preferred not in {"local", "docker"}:
+    if preferred is not None and preferred != "docker":
         raise UserInputError(
             f"unsupported executor '{preferred}'",
-            hint="Use one of: local, docker",
+            hint="Openrat requires executor='docker'.",
         )
 
-    if preferred == "local":
-        return LocalExecutor()
+    if not shutil.which("docker"):
+        raise EnvironmentError(
+            "docker executor requested but docker is not available",
+            hint="Install Docker to run Openrat experiments.",
+        )
 
-    if preferred == "docker":
-        if not shutil.which("docker"):
-            raise EnvironmentError(
-                "docker executor requested but docker is not available",
-                hint="Install Docker or use executor='local'.",
-            )
-        return ProductionDockerExecutor(image=docker_image)
-
-    if shutil.which("docker"):
-        return ProductionDockerExecutor(image=docker_image)
-
-    return LocalExecutor()
+    return DockerExecutor(image=docker_image)
 
 
 def run(path: str, *, executor: str | None = None, timeout: int | None = None, docker_image: str = "python:3.11", isolate: bool = True, memory: str = "512m", cpus: str = "1.0") -> Mapping[str, Any]:
@@ -120,6 +113,18 @@ class OpenRatAgent:
         self.executor = self.config.get("executor")
         self.docker_image = self.config.get("docker_image", "python:3.11")
 
+        session_from_config = self.config.get("session")
+        if isinstance(session_from_config, Session):
+            self.session = session_from_config
+        else:
+            autonomy_raw = self.config.get("autonomy", AutonomyLevel.OBSERVE)
+            autonomy = autonomy_raw if isinstance(autonomy_raw, AutonomyLevel) else AutonomyLevel(int(autonomy_raw))
+            self.session = Session(
+                autonomy=autonomy,
+                patch_policy=str(self.config.get("patch_policy", "disabled")),
+                user_approvals=set(self.config.get("user_approvals") or set()),
+            )
+
         # Build the LLM agent loop only when a model provider is configured.
         self.agent_loop: Any = None
         self.tool_registry: ToolRegistryProtocol | None = None
@@ -129,7 +134,7 @@ class OpenRatAgent:
             from openrat.tools.registry import ToolRegistry
 
             adapter = ModelFactory.create(self.config)
-            self.tool_registry = ToolRegistry()
+            self.tool_registry = ToolRegistry(session=self.session)
 
             # Register the execution runner as callable tool for the model.
             _self = self
@@ -146,11 +151,18 @@ class OpenRatAgent:
                     cpus=arguments.get("cpus", "1.0"),
                 )
 
-            self.tool_registry.register("run_experiment", run_experiment)
+            run_experiment.capability = "observe"
+
+            self.tool_registry.register("run_experiment", run_experiment, capability="observe")
             self.agent_loop = AgentLoop(adapter, tool_registry=self.tool_registry)
 
     def run(self, path: str, timeout: int | None = None, isolate: bool = True, memory: str = "512m", cpus: str = "1.0") -> Mapping[str, Any]:
         """Internal direct execution (not part of public API)."""
+        self.session.authorize(
+            "observe",
+            action="runner.run",
+            metadata={"path": path},
+        )
         return run(path, executor=self.executor, timeout=timeout, docker_image=self.docker_image, isolate=isolate, memory=memory, cpus=cpus)
 
     def chat(self, messages: str | list[Message], max_turns: int = 10) -> ModelResponse:

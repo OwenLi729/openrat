@@ -7,13 +7,13 @@ import os
 import tempfile
 from pathlib import Path
 import pytest
+import subprocess
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from openrat.api.runner import OpenRatAgent, validate_experiment_path
-from openrat.errors import UserInputError, EnvironmentError
+from openrat.core.errors import UserInputError, EnvironmentError
 from openrat.model.types import Message, ModelResponse, ToolCall
-from openrat.tools.registry import ToolRegistry
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -57,7 +57,7 @@ class _FakeAdapterRunsTool:
 # ── chat() — basic ─────────────────────────────────────────────────────────────
 
 def test_chat_without_provider_raises():
-    agent = OpenRatAgent({"executor": "local"})
+    agent = OpenRatAgent({"executor": "docker"})
     with pytest.raises(UserInputError, match="No model configured"):
         agent.chat("hello")
 
@@ -100,7 +100,7 @@ def test_chat_preserves_message_order(monkeypatch):
 # ── agent_loop wiring ──────────────────────────────────────────────────────────
 
 def test_agent_loop_is_none_without_provider():
-    agent = OpenRatAgent({"executor": "local"})
+    agent = OpenRatAgent({"executor": "docker"})
     assert agent.agent_loop is None
 
 
@@ -125,27 +125,18 @@ def test_run_experiment_tool_returns_error_without_path():
 
 
 def test_run_experiment_tool_actually_runs_script(monkeypatch):
-    """run_experiment tool calls agent.run() which calls the executor."""
-    class DummyResult:
-        return_code = 0
-        stdout = "hello world"
-        stderr = ""
-        timed_out = False
-        start_time = 0.0
-        end_time = 0.1
+    """run_experiment tool calls agent.run() which calls the docker executor."""
+    completed = subprocess.CompletedProcess(args=["docker"], returncode=0, stdout="hello world", stderr="")
+    monkeypatch.setattr("subprocess.run", lambda *a, **kw: completed)
 
-        @property
-        def succeeded(self): return True
-
-    monkeypatch.setattr("openrat.executors.local_executor.run_command", lambda *a, **kw: DummyResult())
-
-    agent = OpenRatAgent({"provider": "openai_compatible", "api_key": None, "model_name": "x", "executor": "local"})
+    agent = OpenRatAgent({"provider": "openai_compatible", "api_key": None, "model_name": "x", "executor": "docker"})
     result = agent.tool_registry.execute(
         "run_experiment",
         {"path": str(FIXTURES_DIR / "hello.py")},
     )
     assert result["status"] == "completed"
     assert result["return_code"] == 0
+    assert result["executor"] == "docker"
 
 
 # ── custom tool registration ───────────────────────────────────────────────────
@@ -156,7 +147,7 @@ def test_custom_tool_registered_and_callable():
     def greet(args):
         return {"greeting": f"hello {args['name']}"}
 
-    agent.tool_registry.register("greet", greet)
+    agent.tool_registry.register("greet", greet, capability="observe")
     result = agent.tool_registry.execute("greet", {"name": "openrat"})
     assert result == {"greeting": "hello openrat"}
 
@@ -183,7 +174,7 @@ def test_chat_loop_invokes_custom_tool(monkeypatch):
             return ModelResponse(content="done", tool_calls=[])
 
     agent = OpenRatAgent({"provider": "openai_compatible", "api_key": None, "model_name": "x"})
-    agent.tool_registry.register("my_tool", my_tool)
+    agent.tool_registry.register("my_tool", my_tool, capability="observe")
     agent.agent_loop.adapter = _AdapterCallsTool()
 
     resp = agent.chat("go")
@@ -194,18 +185,8 @@ def test_chat_loop_invokes_custom_tool(monkeypatch):
 # ── multi-turn loop drives run_experiment ──────────────────────────────────────
 
 def test_chat_drives_run_experiment_tool(monkeypatch):
-    class DummyExecResult:
-        return_code = 0
-        stdout = "hello world\n"
-        stderr = ""
-        timed_out = False
-        start_time = 0.0
-        end_time = 0.2
-
-        @property
-        def succeeded(self): return True
-
-    monkeypatch.setattr("openrat.executors.local_executor.run_command", lambda *a, **kw: DummyExecResult())
+    completed = subprocess.CompletedProcess(args=["docker"], returncode=0, stdout="hello world\n", stderr="")
+    monkeypatch.setattr("subprocess.run", lambda *a, **kw: completed)
 
     experiment_path = str(FIXTURES_DIR / "hello.py")
     adapter = _FakeAdapterRunsTool(experiment_path)
@@ -214,7 +195,7 @@ def test_chat_drives_run_experiment_tool(monkeypatch):
         "provider": "openai_compatible",
         "api_key": None,
         "model_name": "x",
-        "executor": "local",
+        "executor": "docker",
     })
     agent.agent_loop.adapter = adapter
 
@@ -251,19 +232,10 @@ def test_validate_path_inside_cwd_returns_resolved():
 # ── OpenRatAgent.run() direct execution ────────────────────────────────────────
 
 def test_direct_run_returns_completed(monkeypatch):
-    class DummyResult:
-        return_code = 0
-        stdout = "hello world\n"
-        stderr = ""
-        timed_out = False
-        start_time = 0.0
-        end_time = 0.1
-
-        @property
-        def succeeded(self): return True
-
-    monkeypatch.setattr("openrat.executors.local_executor.run_command", lambda *a, **kw: DummyResult())
-    agent = OpenRatAgent({"executor": "local"})
+    completed = subprocess.CompletedProcess(args=["docker"], returncode=0, stdout="hello world\n", stderr="")
+    monkeypatch.setattr("subprocess.run", lambda *a, **kw: completed)
+    agent = OpenRatAgent({"executor": "docker"})
     result = agent.run(str(FIXTURES_DIR / "hello.py"), isolate=True)
     assert result["status"] == "completed"
     assert result["return_code"] == 0
+    assert result["executor"] == "docker"

@@ -124,7 +124,7 @@ def my_tool(arguments: dict) -> dict:
     return {"result": 42}
 
 agent = Openrat({"provider": "openai_compatible", ...})
-agent.tool_registry.register("my_tool", my_tool)
+agent.tool_registry.register("my_tool", my_tool, capability="observe")
 ```
 
 Any registered tool callable will be invoked when the model emits a matching tool

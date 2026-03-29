@@ -12,13 +12,12 @@ Requires a valid API key for the configured provider.
 """
 
 import os
-from openrat import Openrat
-from openrat.model.types import Message
+from openrat import Openrat, Message
 
 # ── Config ────────────────────────────────────────────────────────────────────
 app = Openrat({
-    # Execution config
-    "executor": "local",          # "docker" for hardened sandbox
+    # Execution config — all runs go through the Docker executor
+    "executor": "docker",
     "docker_image": "python:3.11",
 
     # Model config — required to enable app.chat()

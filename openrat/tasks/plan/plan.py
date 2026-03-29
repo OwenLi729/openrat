@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 
 from openrat.core.experiment_spec import ExperimentSpec
 from openrat.core.session.session import Session
-from openrat.errors import PolicyViolation
+from openrat.core.errors import PolicyViolation
 from openrat.tasks.dag.dag import DAG
 
 
@@ -46,8 +46,7 @@ class Plan:
             tool_name = str(cfg["tool"])
             capability = str(cfg.get("capability") or capability_by_tool.get(tool_name) or "observe")
 
-            authorized = bool(session.authorize(capability, dry_run=True))
-            reason = None if authorized else "requires approval"
+            authorized, reason = session.check_capability(capability)
 
             actions.append(
                 ProposedAction(

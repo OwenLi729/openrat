@@ -1,13 +1,14 @@
 from dataclasses import dataclass
 from collections.abc import Mapping
 from typing import Any
-from openrat.errors import UserInputError, PolicyViolation
+from openrat.core.errors import UserInputError, PolicyViolation
 
 
 @dataclass
 class ToolProposal:
     tool_name: str
     payload: Mapping[str, Any]
+    capability: str | None = None
 
 
 class BaseTool:
@@ -18,6 +19,7 @@ class BaseTool:
     """
     name = "BaseTool"
     description = ""
+    capability = "observe"
     required_autonomy_level = 0
 
     def __init__(self, governance: Any = None):
@@ -28,8 +30,14 @@ class BaseTool:
         if not isinstance(proposal, ToolProposal):
             raise UserInputError("proposal must be a ToolProposal")
 
-        # autonomy check
-        if self.governance is not None:
+        effective_capability = proposal.capability or getattr(self, "capability", "observe")
+        if self.governance is not None and hasattr(self.governance, "authorize"):
+            self.governance.authorize(
+                effective_capability,
+                action=f"tool.validate:{proposal.tool_name}",
+                metadata={"tool": proposal.tool_name},
+            )
+        elif self.governance is not None:
             level = getattr(self.governance, "autonomy_level", 0)
             if level < self.required_autonomy_level:
                 raise PolicyViolation("insufficient autonomy level for this tool")
@@ -39,3 +47,33 @@ class BaseTool:
             validator(proposal.payload)
 
         return True
+
+    def propose_patch(
+        self,
+        session: Any,
+        *,
+        patch_id: str,
+        scope: str | None = None,
+        metadata: Mapping[str, Any] | None = None,
+    ) -> None:
+        session.record_patch(
+            patch_id=patch_id,
+            operation="propose",
+            scope=scope,
+            metadata=metadata,
+        )
+
+    def apply_patch(
+        self,
+        session: Any,
+        *,
+        patch_id: str,
+        scope: str | None = None,
+        metadata: Mapping[str, Any] | None = None,
+    ) -> None:
+        session.record_patch(
+            patch_id=patch_id,
+            operation="apply",
+            scope=scope,
+            metadata=metadata,
+        )

@@ -7,7 +7,7 @@ sys.path.insert(0, str(root))
 
 from openrat.core.session.session import Session
 from openrat.core.governance.autonomy import AutonomyLevel
-from openrat.errors import PolicyViolation, UserInputError
+from openrat.core.errors import PolicyViolation, UserInputError
 
 
 def test_session_dry_run_does_not_mutate_state():
@@ -45,3 +45,28 @@ def test_session_auto_patch_policy_allows_within_autonomy():
 def test_session_invalid_patch_policy_raises():
     with pytest.raises(UserInputError, match="patch_policy"):
         Session(autonomy=AutonomyLevel.OBSERVE, patch_policy="invalid")
+
+
+def test_patch_policy_enabled_blocks_patch_apply():
+    session = Session(autonomy=AutonomyLevel.EXTENDED_EDIT, patch_policy="interactive")
+    with pytest.raises(PolicyViolation, match="only be proposed"):
+        session.record_patch(patch_id="p1", operation="apply", scope="runtime")
+
+
+def test_patch_policy_enabled_allows_patch_propose():
+    session = Session(autonomy=AutonomyLevel.EXTENDED_EDIT, patch_policy="interactive")
+    session.record_patch(patch_id="p2", operation="propose", scope="runtime")
+    assert len(session.patches_proposed) == 1
+    assert session.patches_proposed[0]["patch_id"] == "p2"
+
+
+def test_cannot_mutate_authority_without_explicit_user_action():
+    session = Session(autonomy=AutonomyLevel.OBSERVE, patch_policy="disabled")
+    with pytest.raises(PolicyViolation, match="explicit user action"):
+        session.autonomy = AutonomyLevel.EXTENDED_EDIT
+
+
+def test_update_authority_requires_user_initiated_flag():
+    session = Session(autonomy=AutonomyLevel.OBSERVE, patch_policy="disabled")
+    with pytest.raises(PolicyViolation, match="explicit user action"):
+        session.update_authority(autonomy=AutonomyLevel.PARAMS_ONLY)

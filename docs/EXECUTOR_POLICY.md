@@ -1,47 +1,86 @@
-# Executor policy
+# Executor Policy
 
-This document explains the runtime executor policy introduced in the project.
+OpenRat routes all execution through a single, hardened **`DockerExecutor`**.
+There is no local or stub execution path in production.
 
-Overview
---------
+## Architecture
 
-The `EXECUTOR_POLICY` controls which executor implementations are provided by
-the `executors` package at runtime. This allows tests and CI to control
-whether lightweight stubs or production-capable backends are used.
-
-Modes
------
-
-- `auto` (default): prefer production executors for sandboxed `docker` runs
-  while keeping stub bindings for other paths. This mode is useful in local
-  development and CI to exercise the production path where appropriate.
-- `stub`: always use stub backends (fast, deterministic unit tests).
-- `production`: register production-capable backends for all executor types.
-
-API
----
-
-Use the following API from the `openrat.executors` package:
-
-```python
-from openrat.executors import set_executor_policy, EXECUTOR_POLICY
-
-set_executor_policy("production")
-print(EXECUTOR_POLICY)  # {'mode': 'production'}
+```
+Openrat / OpenRatAgent
+    └── _choose_executor()
+            └── DockerExecutor          ← the only registered backend
+                    └── docker run --rm
+                            --network none
+                            --security-opt no-new-privileges
+                            --pids-limit 100
+                            -u <uid>:<gid>
+                            --memory <limit>
+                            --cpus <limit>
 ```
 
-Checking which executors are registered at runtime:
+## Security properties
+
+| Property | Value |
+|----------|-------|
+| Network | None (`--network none`) |
+| Privilege escalation | Blocked (`--security-opt no-new-privileges`) |
+| PID limit | 100 |
+| User | Current UID/GID (non-root) |
+| Filesystem | Ephemeral per-run temp directory; workspace not modified |
+| Cleanup | Container removed immediately on exit (`--rm`) |
+
+## Runtime API
+
+Both modes below resolve to the same `DockerExecutor`:
 
 ```python
-from openrat.executors import ExecutorRegistry
+from openrat.executors import set_executor_policy
 
-print(ExecutorRegistry.list())  # ['docker', 'local']
+set_executor_policy("production")   # explicit
+set_executor_policy("auto")          # default
 ```
 
-Notes
------
+Calling `set_executor_policy("stub")` or any other unknown mode raises a
+`ValueError`.
 
-- The `ExecutorRegistry` is the global singleton for executor registration and access.
-- `set_executor_policy()` will reconfigure the registry bindings.
-- CI pipelines that should exercise production execution paths should call
-  `set_executor_policy("production")` before running integration tests.
+## Configuration
+
+Pass `executor` and optional resource limits in the `Openrat` config dict:
+
+```python
+from openrat import Openrat
+
+app = Openrat({
+    "executor": "docker",          # required
+    "docker_image": "python:3.11", # image to run scripts in
+    "memory": "512m",              # optional — passed to --memory
+    "cpus": "1.0",                 # optional — passed to --cpus
+})
+```
+
+## Registry
+
+The `ExecutorRegistry` is keyed by executor name. Only `"docker"` is registered:
+
+```python
+from openrat.executors.registry import ExecutorRegistry
+
+ExecutorRegistry.list()   # ["docker"]
+executor = ExecutorRegistry.get("docker")
+```
+
+## Executor result
+
+`DockerExecutor.execute()` returns:
+
+```python
+{
+    "status": "completed" | "failed",
+    "executor": "docker",
+    "return_code": int,
+    "stdout": str,
+    "stderr": str,
+    "timed_out": bool,
+    "duration": float,   # seconds
+}
+```

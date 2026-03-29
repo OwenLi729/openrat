@@ -1,8 +1,8 @@
 from collections.abc import MutableSequence
 
 from .types import Message, ModelResponse, ToolCall
-from openrat.errors import UserInputError, InternalError
-from openrat.protocols import ModelAdapterProtocol, ToolRegistryProtocol
+from openrat.core.errors import UserInputError, InternalError
+from openrat.core.protocols import ModelAdapterProtocol, ToolRegistryProtocol
 
 class AgentLoop:
     def __init__(self, adapter: ModelAdapterProtocol, tool_registry: ToolRegistryProtocol | None = None):

@@ -11,10 +11,9 @@ Usage:
 from openrat import Openrat
 
 # ── Config ────────────────────────────────────────────────────────────────────
-# "executor" can be "docker", "local", or omitted (auto-detects Docker).
-# "docker_image" is only used when the Docker executor is selected.
+# All execution is routed through the Docker executor for security isolation.
 app = Openrat({
-    "executor": "local",          # change to "docker" for sandboxed runs
+    "executor": "docker",
     "docker_image": "python:3.11",
 })
 
