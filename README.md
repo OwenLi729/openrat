@@ -141,8 +141,7 @@ response = app.chat("Run experiments/train.py and summarize results")
 
 All execution is routed through the `DockerExecutor`, which runs scripts in an
 ephemeral container with `--network none`, `--security-opt no-new-privileges`,
-`--pids-limit 100`, and configurable memory/CPU limits. There is no local or
-stub execution path in production.
+`--pids-limit 100`, and configurable memory/CPU limits. 
 
 ```python
 from openrat.executors import set_executor_policy
