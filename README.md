@@ -17,7 +17,7 @@ What Openrat does (coming soon)
 Openrat is editor‑agnostic (VS Code, Neovim, any IDE) and shell‑based by design.
 
 
-Research‑first by design
+Research‑first by design.
 Openrat is not a generic AI coding agent.
 
 * It does not rewrite large portions of your codebase
