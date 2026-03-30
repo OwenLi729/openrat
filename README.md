@@ -93,15 +93,42 @@ Pytesting with EXECUTOR_POLICY=production pytest tests/
 ```
 
 
-## Framework Workflow
+## Usage Guide
 
-`Openrat` is the recommended API for all use cases:
+### 1. Quick Execution (Simplest)
+
+Run a script and capture output:
 
 ```python
-from openrat import Openrat, ExperimentSpec, Session
+from openrat import Openrat
+
+app = Openrat({"executor": "docker", "docker_image": "python:3.11"})
+result = app.run(
+    "experiments/train.py",
+    timeout=120,
+    isolate=True,    # copies script to temp dir for safety
+    memory="1g",
+    cpus="2.0",
+)
+
+print(result["stdout"])
+print(f"Exit code: {result['return_code']}")
+```
+
+See [`examples/run_experiment.py`](examples/run_experiment.py) for a complete example.
+
+### 2. Framework Workflow (Recommended)
+
+Build and execute an experiment plan with governance:
+
+```python
+from openrat import Openrat, Session, AutonomyLevel, ExperimentSpec
 
 # Create a session (defines autonomy and governance)
-session = Session(autonomy_level=0)
+session = Session(
+    autonomy=AutonomyLevel.OBSERVE,
+    patch_policy="disabled",
+)
 
 # Define your experiment
 spec = ExperimentSpec(
@@ -110,32 +137,85 @@ spec = ExperimentSpec(
     tasks=[...],
 )
 
-# Create the framework instance
+# Build and execute plan
 app = Openrat({"executor": "docker", "docker_image": "python:3.11"})
-
-# Build a plan (with policy approval checks)
 plan = app.build_plan(spec, session)
+artifact = app.execute_plan(plan, session, tools={...})
 
-# Execute the plan
-artifact = app.execute_plan(plan, session)
+# Access results
+print(artifact.status)
+print(artifact.governance_report())
 ```
 
-**For LLM-driven workflows:**
+### 3. LLM Agent Loop (Chat Interface)
+
+Let a language model decide which experiments to run and interpret results:
 
 ```python
-# Configure with a model provider
+from openrat import Openrat, Message
+import os
+
 app = Openrat({
     "executor": "docker",
     "docker_image": "python:3.11",
     "provider": "openai_compatible",
-    "api_key": "sk-...",
+    "base_url": "https://api.openai.com/v1",
+    "api_key": os.environ["OPENAI_API_KEY"],
     "model_name": "gpt-4o",
 })
 
-# Chat with the model (enables tool calls to run experiments)
-response = app.chat("Run experiments/train.py and summarize results")
+# Chat with the model; it can call tools to run experiments
+messages = [
+    Message(role="system", content="You are a research assistant."),
+    Message(role="user", content="Run experiments/train.py and summarize the results."),
+]
+
+response = app.chat(messages, max_turns=5)
+print(response.content)
 ```
 
+See [`examples/chat_agent.py`](examples/chat_agent.py) for a complete example.
+
+### 4. Custom Tools (Advanced)
+
+Register custom functions that the LLM can call:
+
+```python
+def read_metrics(arguments: dict) -> dict:
+    """Custom tool callable by the LLM."""
+    metric = arguments.get("metric", "accuracy")
+    # Implement your metric reading logic
+    return {"metric": metric, "value": 0.95}
+
+app.tool_registry.register("read_metrics", read_metrics, capability="observe")
+
+# Now the LLM can call this tool
+response = app.chat("Check the accuracy metric for me.")
+```
+
+See [`examples/custom_tool.py`](examples/custom_tool.py) for a complete example.
+
+## Session & Governance
+
+Every execution runs within a `Session` that defines:
+
+- **Autonomy level** — what the agent can do (observe, modify params, apply fixes, edit code)
+- **Patch policy** — whether patches are proposed (disabled) or auto-applied
+- **Approval scope** — which capabilities require explicit approval
+
+All governance decisions are logged in an immutable audit trail, captured in the final `Artifact`:
+
+```python
+artifact.governance_report()
+# {
+#   "session_id": "...",
+#   "autonomy": 0,  # Level 0 = observe only
+#   "used_capabilities": ["observe"],
+#   "blocked_capabilities": [],
+#   "patches_proposed": [],
+#   "events": [...]  # Full audit trail
+# }
+```
 
 ## Executor policy
 
