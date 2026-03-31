@@ -1,7 +1,7 @@
 import argparse
 import sys
-from .api import Openrat
-from .errors import OpenratError
+from openrat import Openrat
+from openrat.core.errors import OpenratError
 
 
 def main(argv=None):

@@ -11,8 +11,8 @@ requires-python = ">=3.11"
 dependencies = ["requests>=2.0"]
 
 [project.scripts]
-openrat = "openrat.ui.cli:main"
+openrat = "ui.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["openrat"]
+include = ["openrat", "ui"]
