@@ -6,13 +6,14 @@ Openrat is a research‑first, privacy‑preserving experiment agent designed to
 It is built for researchers and research institutions who want automation without losing control, reproducibility, or interpretability.
 
 
-What Openrat does (coming soon)
-* Runs experiments across local machines, clusters, Colab, and SSH
+What Openrat does
+* Runs experiments in Docker with sandboxed execution
 * Diagnoses failures and reports actionable diagnostics
 * Chains and branches experiments based on results
 * Safely applies bounded, auditable changes (e.g. configs, hyperparameters)
-* Notifies you via email on completion, errors, or required input
 * Generates diagnostic artifacts (summaries, diffs, metrics, plots)
+* Cluster / remote execution (coming soon)
+* Optional email notifications (coming soon)
 
 Openrat is editor‑agnostic (VS Code, Neovim, any IDE) and shell‑based by design.
 
@@ -28,7 +29,7 @@ Openrat is not a generic AI coding agent.
 For larger changes, Openrat proposes patches with explanations rather than applying them automatically.
 
 
-Bounded autonomy (capability‑scoped) (coming soon)
+Bounded autonomy (capability‑scoped)
 Openrat uses graduated autonomy levels, enforced outside the model:
 
 * Level 0 — Observe only: run, diagnose, report
@@ -56,7 +57,7 @@ artifact = app.execute_plan(plan)
 ```
 
 
-Experiment chaining & branching (coming soon)
+Experiment chaining & branching
 Openrat can:
 * Run experiments sequentially or in parallel
 * Branch based on metrics, failures, or diagnostics
@@ -74,7 +75,7 @@ Model‑agnostic
 Privacy & security
 * Local runs
 * No code, data, or experiments leave your machine unless you choose
-* Optional email notifications and remote control are opt‑in and authenticated (coming soon)
+* Remote control workflows (coming soon; see `ROADMAP.md`)
 * Autonomy and permissions are enforced by policy, not by the model
 
 
@@ -116,6 +117,8 @@ print(f"Exit code: {result['return_code']}")
 ```
 
 See [`examples/run_experiment.py`](examples/run_experiment.py) for a complete example.
+
+Examples require Docker to be running.
 
 ### 2. Framework Workflow (Recommended)
 
@@ -230,3 +233,7 @@ from openrat.executors import set_executor_policy
 set_executor_policy("production")   # explicit
 set_executor_policy("auto")          # default
 ```
+
+## Roadmap
+
+Planned items for v0.2+ and v0.3 are tracked in [`ROADMAP.md`](ROADMAP.md).

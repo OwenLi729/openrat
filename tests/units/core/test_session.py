@@ -49,7 +49,7 @@ def test_session_invalid_patch_policy_raises():
 
 def test_patch_policy_enabled_blocks_patch_apply():
     session = Session(autonomy=AutonomyLevel.EXTENDED_EDIT, patch_policy="interactive")
-    with pytest.raises(PolicyViolation, match="only be proposed"):
+    with pytest.raises(PolicyViolation, match="interactive policy"):
         session.record_patch(patch_id="p1", operation="apply", scope="runtime")
 
 
@@ -58,6 +58,16 @@ def test_patch_policy_enabled_allows_patch_propose():
     session.record_patch(patch_id="p2", operation="propose", scope="runtime")
     assert len(session.patches_proposed) == 1
     assert session.patches_proposed[0]["patch_id"] == "p2"
+
+
+def test_patch_policy_disabled_blocks_propose_and_apply():
+    session = Session(autonomy=AutonomyLevel.EXTENDED_EDIT, patch_policy="disabled")
+
+    with pytest.raises(PolicyViolation, match="disabled by patch policy"):
+        session.record_patch(patch_id="p3", operation="propose", scope="runtime")
+
+    with pytest.raises(PolicyViolation, match="disabled by patch policy"):
+        session.record_patch(patch_id="p4", operation="apply", scope="runtime")
 
 
 def test_cannot_mutate_authority_without_explicit_user_action():

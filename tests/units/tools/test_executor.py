@@ -111,6 +111,23 @@ def test_executor_tool_wraps_backend_exception(monkeypatch, tmp_path):
         tool.run(payload, session)
 
 
+def test_executor_tool_rejects_caller_provided_mount_paths(monkeypatch, tmp_path):
+    backend = _FakeBackend()
+    monkeypatch.setattr("openrat.tools.executor.ExecutorRegistry.get", lambda name: backend)
+
+    tool = ExecutorTool()
+    session = _observe_session()
+    payload = {
+        "executor_type": "docker",
+        "command": ["python", "-c", "print('x')"],
+        "cwd": str(tmp_path),
+        "code_dir": str(tmp_path),
+    }
+
+    with pytest.raises(UserInputError, match="managed internally"):
+        tool.run(payload, session)
+
+
 def test_executor_tool_registers_and_executes_via_registry(monkeypatch, tmp_path):
     backend = _FakeBackend()
     monkeypatch.setattr("openrat.tools.executor.ExecutorRegistry.get", lambda name: backend)

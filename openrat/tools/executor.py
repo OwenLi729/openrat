@@ -34,6 +34,11 @@ class ExecutorTool(BaseTool):
         if extra:
             raise UserInputError(f"unexpected payload keys: {sorted(extra)}")
 
+        if payload.get("code_dir") is not None or payload.get("outputs_dir") is not None:
+            raise UserInputError(
+                "code_dir and outputs_dir are managed internally and cannot be provided"
+            )
+
         executor_type = str(payload.get("executor_type", "docker"))
         try:
             ExecutorRegistry.get(executor_type)
@@ -74,13 +79,19 @@ class ExecutorTool(BaseTool):
         executor_type = str(payload.get("executor_type", "docker"))
         backend = ExecutorRegistry.get(executor_type)
 
+        limits_input = payload.get("limits")
+        if isinstance(limits_input, Mapping):
+            memory = str(limits_input.get("memory") or "512m")
+            cpus = str(limits_input.get("cpus") or "1.0")
+        else:
+            memory = "512m"
+            cpus = "1.0"
+
         backend_payload = {
             "command": payload["command"],
             "cwd": payload.get("cwd"),
             "timeout": payload.get("timeout"),
-            "code_dir": payload.get("code_dir"),
-            "outputs_dir": payload.get("outputs_dir"),
-            "limits": payload.get("limits", {}),
+            "limits": {"memory": memory, "cpus": cpus},
         }
 
         try:

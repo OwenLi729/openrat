@@ -2,7 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased] - 2026-03-05
+## [Unreleased]
+
+- No unreleased changes recorded yet.
+
+## [0.1.0] - 2026-03-30
+
+- Public API and workflow stabilization around `Openrat` facade.
+- Governance/session refactoring and policy enforcement hardening.
+- Executor cleanup and Docker-first execution path consolidation.
+- Internal API cleanup and import path modernization.
+- Documentation and examples updated to align with public API usage.
+- Test suite status for release: `85 passed, 4 skipped`.
+
+## [0.0.x] - 2026-03-05
 
 - Added executor policy API to control which executor backends are used:
   - `executors.EXECUTOR_POLICY` (modes: `stub`, `production`, `auto`).
@@ -15,5 +28,3 @@ All notable changes to this project will be documented in this file.
 - Improved payload validation in `tools/executor.py`: `cwd` is validated
   first; `timeout` is optional but validated when present.
 - Fixed tests and normalization for model adapters; added adapter unit tests.
-
-All tests pass locally: `20 passed` (run on 2026-03-05).

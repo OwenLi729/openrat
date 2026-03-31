@@ -239,3 +239,23 @@ def test_direct_run_returns_completed(monkeypatch):
     assert result["status"] == "completed"
     assert result["return_code"] == 0
     assert result["executor"] == "docker"
+
+
+def test_direct_run_isolate_false_still_passes_resource_limits(monkeypatch):
+    captured = {"cmd": None}
+
+    def _fake_run(cmd, *a, **kw):
+        captured["cmd"] = list(cmd)
+        return subprocess.CompletedProcess(args=cmd, returncode=0, stdout="ok\n", stderr="")
+
+    monkeypatch.setattr("subprocess.run", _fake_run)
+
+    agent = OpenRatAgent({"executor": "docker"})
+    result = agent.run(str(FIXTURES_DIR / "hello.py"), isolate=False)
+
+    assert result["status"] == "completed"
+    assert captured["cmd"] is not None
+    assert "--memory" in captured["cmd"]
+    assert "512m" in captured["cmd"]
+    assert "--cpus" in captured["cmd"]
+    assert "1.0" in captured["cmd"]

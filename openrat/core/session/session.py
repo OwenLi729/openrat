@@ -14,7 +14,7 @@ class Session:
     """Execution authority and approval state for a run session."""
 
     autonomy: AutonomyLevel
-    patch_policy: str  # "disabled" | "interactive" | "auto"
+    patch_policy: str  # "disabled" (block all patch ops) | "interactive" (propose only) | "auto" (propose/apply)
     user_approvals: set[str] = field(default_factory=set)
     used_capabilities: set[str] = field(default_factory=set)
     blocked_capabilities: set[str] = field(default_factory=set)
@@ -117,6 +117,13 @@ class Session:
         dry_run: bool = False,
         metadata: Mapping[str, Any] | None = None,
     ) -> bool:
+        """Authorize patch operation according to explicit patch policy.
+
+        Policy semantics:
+        - disabled: block all patch operations (propose/apply)
+        - interactive: allow propose, block apply
+        - auto: allow propose and apply
+        """
         try:
             op = PatchOperation(operation)
         except ValueError:
@@ -145,8 +152,21 @@ class Session:
             raise PolicyViolation(reason)
 
         policy = PatchPolicy(self.patch_policy)
-        if policy != PatchPolicy.DISABLED and op == PatchOperation.APPLY:
-            reason = "Patch policy is enabled; patches may only be proposed"
+        if policy == PatchPolicy.DISABLED:
+            reason = "Patch operations are disabled by patch policy"
+            if dry_run:
+                return False
+            self._log_event(
+                action="patch.authorize",
+                capability=None,
+                outcome="blocked",
+                reason=reason,
+                metadata={**dict(metadata or {}), "scope": scope, "operation": op.value},
+            )
+            raise PolicyViolation(reason)
+
+        if policy == PatchPolicy.INTERACTIVE and op == PatchOperation.APPLY:
+            reason = "Patch apply is blocked in interactive policy; patches may only be proposed"
             if dry_run:
                 return False
             self._log_event(

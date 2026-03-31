@@ -7,7 +7,7 @@ import tempfile
 from openrat.core.governance.autonomy import AutonomyLevel
 from openrat.core.session.session import Session
 from openrat.executors import DockerExecutor
-from openrat.core.errors import UserInputError, EnvironmentError
+from openrat.core.errors import UserInputError, EnvironmentError, InternalError
 from openrat.model.types import Message, ModelResponse
 from openrat.core.protocols import ExecutorProtocol, ToolRegistryProtocol
 
@@ -54,6 +54,20 @@ def _choose_executor(preferred: str | None, docker_image: str) -> ExecutorProtoc
     return DockerExecutor(image=docker_image)
 
 
+def _validate_managed_mount_path(path: Path, *, allowed_base: Path, label: str) -> str:
+    resolved = path.resolve()
+    base = allowed_base.resolve()
+    if not resolved.exists() or not resolved.is_dir():
+        raise InternalError(f"managed {label} must be an existing directory")
+    try:
+        resolved.relative_to(base)
+    except ValueError as exc:
+        raise InternalError(f"managed {label} escaped allowed execution base") from exc
+    if resolved.is_symlink():
+        raise InternalError(f"managed {label} must not be a symlink")
+    return str(resolved)
+
+
 def run(path: str, *, executor: str | None = None, timeout: int | None = None, docker_image: str = "python:3.11", isolate: bool = True, memory: str = "512m", cpus: str = "1.0") -> Mapping[str, Any]:
     """Internal direct execution helper (not part of public API).
     
@@ -63,6 +77,9 @@ def run(path: str, *, executor: str | None = None, timeout: int | None = None, d
     """
     p = validate_experiment_path(path)
     exec_obj = _choose_executor(executor, docker_image)
+
+    memory_limit = str(memory or "512m")
+    cpu_limit = str(cpus or "1.0")
 
     if isolate:
         with tempfile.TemporaryDirectory(prefix="openrat-run-") as td:
@@ -80,9 +97,9 @@ def run(path: str, *, executor: str | None = None, timeout: int | None = None, d
                 "command": ["python", f"/code/{dest.name}"],
                 "cwd": str(outputs_dir),
                 "timeout": timeout,
-                "code_dir": str(code_dir),
-                "outputs_dir": str(outputs_dir),
-                "limits": {"memory": memory, "cpus": cpus},
+                "code_dir": _validate_managed_mount_path(code_dir, allowed_base=td_path, label="code_dir"),
+                "outputs_dir": _validate_managed_mount_path(outputs_dir, allowed_base=td_path, label="outputs_dir"),
+                "limits": {"memory": memory_limit, "cpus": cpu_limit},
             }
             result = exec_obj.execute(payload)
             return result
@@ -91,6 +108,7 @@ def run(path: str, *, executor: str | None = None, timeout: int | None = None, d
         "command": ["python", str(p)],
         "cwd": str(p.parent),
         "timeout": timeout,
+        "limits": {"memory": memory_limit, "cpus": cpu_limit},
     }
 
     result = exec_obj.execute(payload)

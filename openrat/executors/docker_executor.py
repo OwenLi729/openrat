@@ -46,12 +46,10 @@ class DockerExecutor(BaseExecutor):
             f"{uid}:{gid}",
         ]
 
-        mem = limits.get("memory")
-        cpus = limits.get("cpus")
-        if mem:
-            cmd += ["--memory", str(mem)]
-        if cpus:
-            cmd += ["--cpus", str(cpus)]
+        mem = limits.get("memory") or "512m"
+        cpus = limits.get("cpus") or "1.0"
+        cmd += ["--memory", str(mem)]
+        cmd += ["--cpus", str(cpus)]
 
         if code_dir:
             cmd += ["-v", f"{Path(code_dir)}:/code:ro"]
