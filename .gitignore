@@ -4,4 +4,22 @@ __pycache__/
 *.egg-info/
 .venv/
 
+# Packaging artifacts
+build/
+dist/
+pip-wheel-metadata/
+
+# Coverage and test reports
+.coverage
+.coverage.*
+htmlcov/
+
+# Environment files
+.env
+.env.*
+
+# OS/editor noise
+.DS_Store
+*.log
+
 

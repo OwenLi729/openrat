@@ -7,12 +7,27 @@ name = "openrat"
 version = "0.1.0"
 description = "OpenRat: experiment orchestration and sandboxed execution framework"
 readme = "README.md"
+authors = [{ name = "OpenRat contributors" }]
+license = "MIT"
 requires-python = ">=3.11"
 dependencies = ["requests>=2.0"]
+keywords = ["experiments", "orchestration", "automation", "research", "docker"]
+classifiers = [
+	"Development Status :: 3 - Alpha",
+	"Intended Audience :: Science/Research",
+	"Programming Language :: Python :: 3",
+	"Programming Language :: Python :: 3.11",
+	"Programming Language :: Python :: 3.12",
+	"Programming Language :: Python :: 3.13",
+	"Operating System :: OS Independent",
+]
 
 [project.scripts]
 openrat = "ui.cli:main"
 
+[tool.setuptools]
+package-dir = {"" = "src"}
+
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["openrat", "ui"]
+where = ["src"]
+include = ["openrat*", "ui*"]

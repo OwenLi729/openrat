@@ -17,6 +17,20 @@ What Openrat does
 
 Openrat is editor‑agnostic (VS Code, Neovim, any IDE) and shell‑based by design.
 
+## Installation
+
+Install from PyPI:
+
+```bash
+pip install openrat
+```
+
+For local development:
+
+```bash
+pip install -e .
+```
+
 
 Research‑first by design.
 Openrat is not a generic AI coding agent.
@@ -116,7 +130,7 @@ print(result["stdout"])
 print(f"Exit code: {result['return_code']}")
 ```
 
-See [`examples/run_experiment.py`](examples/run_experiment.py) for a complete example.
+See `examples/run_experiment.py` for a complete example.
 
 Examples require Docker to be running.
 
@@ -177,7 +191,7 @@ response = app.chat(messages, max_turns=5)
 print(response.content)
 ```
 
-See [`examples/chat_agent.py`](examples/chat_agent.py) for a complete example.
+See `examples/chat_agent.py` for a complete example.
 
 ### 4. Custom Tools (Advanced)
 
@@ -196,7 +210,7 @@ app.tool_registry.register("read_metrics", read_metrics, capability="observe")
 response = app.chat("Check the accuracy metric for me.")
 ```
 
-See [`examples/custom_tool.py`](examples/custom_tool.py) for a complete example.
+See `examples/custom_tool.py` for a complete example.
 
 ## Session & Governance
 
@@ -236,4 +250,4 @@ set_executor_policy("auto")          # default
 
 ## Roadmap
 
-Planned items for v0.2+ and v0.3 are tracked in [`ROADMAP.md`](ROADMAP.md).
+Planned items for v0.2+ and v0.3 are tracked in `ROADMAP.md`.
