@@ -12,4 +12,4 @@ This roadmap lists planned work after v0.1.0.
 
 - Remote control workflows for managed long-running experiments.
 - Broader execution environment integrations beyond local Docker-first flow.
-- Terminal user interface (TUI) for interactive run monitoring and control.
+- TUI for interactive run monitoring and control.
