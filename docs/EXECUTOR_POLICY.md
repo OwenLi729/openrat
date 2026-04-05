@@ -12,6 +12,9 @@ Openrat / OpenRatAgent
                     └── docker run --rm
                             --network none
                             --security-opt no-new-privileges
+                            --cap-drop ALL
+                            --read-only
+                            --tmpfs /tmp
                             --pids-limit 100
                             -u <uid>:<gid>
                             --memory <limit>
@@ -24,10 +27,33 @@ Openrat / OpenRatAgent
 |----------|-------|
 | Network | None (`--network none`) |
 | Privilege escalation | Blocked (`--security-opt no-new-privileges`) |
+| Linux capabilities | Dropped (`--cap-drop ALL`) |
+| Root filesystem | Read-only (`--read-only`) |
+| Temporary writable FS | `/tmp` tmpfs only (`--tmpfs /tmp`) |
 | PID limit | 100 |
 | User | Current UID/GID (non-root) |
-| Filesystem | Ephemeral per-run temp directory; workspace not modified |
+| Filesystem | Ephemeral per-run temp directory; `/code` read-only, `/outputs` writable |
 | Cleanup | Container removed immediately on exit (`--rm`) |
+
+## Resource limits and timeout
+
+Openrat enforces bounded execution limits by default:
+
+| Control | Default | Maximum |
+|---------|---------|---------|
+| Timeout | 300s | 3600s |
+| Memory  | 512m | 4g |
+| CPUs    | 1.0 | 4.0 |
+
+Unbounded execution is denied by default. It can only be enabled with explicit
+user opt-in via config:
+
+```python
+app = Openrat({
+    "executor": "docker",
+    "allow_unbounded_limits": True,
+})
+```
 
 ## Runtime API
 
@@ -53,8 +79,9 @@ from openrat import Openrat
 app = Openrat({
     "executor": "docker",          # required
     "docker_image": "python:3.11", # image to run scripts in
-    "memory": "512m",              # optional — passed to --memory
-    "cpus": "1.0",                 # optional — passed to --cpus
+    "memory": "512m",              # bounded; max 4g unless allow_unbounded_limits=True
+    "cpus": "1.0",                 # bounded; max 4.0 unless allow_unbounded_limits=True
+    "timeout": 300,                 # bounded; max 3600 unless allow_unbounded_limits=True
 })
 ```
 

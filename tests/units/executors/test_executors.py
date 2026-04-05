@@ -38,6 +38,45 @@ def test_docker_executor_runs_subprocess(monkeypatch):
     assert res["return_code"] == 0
 
 
+def test_docker_executor_includes_hardening_flags(monkeypatch):
+    captured = {"cmd": None}
+
+    def _fake_run(cmd, *args, **kwargs):
+        captured["cmd"] = list(cmd)
+        return subprocess.CompletedProcess(args=cmd, returncode=0, stdout="ok", stderr="")
+
+    monkeypatch.setattr("subprocess.run", _fake_run)
+
+    docker = DockerExecutor(image="python:3.11")
+    docker.execute(
+        {
+            "command": ["python", "/code/a.py"],
+            "cwd": ".",
+            "timeout": 5,
+            "code_dir": "/tmp/code",
+            "outputs_dir": "/tmp/out",
+            "limits": {"memory": "256m", "cpus": "0.5"},
+        }
+    )
+
+    assert captured["cmd"] is not None
+    assert "--cap-drop" in captured["cmd"]
+    assert "ALL" in captured["cmd"]
+    assert "--read-only" in captured["cmd"]
+    assert "--tmpfs" in captured["cmd"]
+
+
+def test_docker_executor_defaults_timeout_when_none(monkeypatch):
+    docker = DockerExecutor(image="python:3.11")
+
+    def _fake_run(*args, **kwargs):
+        assert kwargs["timeout"] == 300
+        return subprocess.CompletedProcess(args=args[0], returncode=0, stdout="ok", stderr="")
+
+    monkeypatch.setattr("subprocess.run", _fake_run)
+    docker.execute({"command": ["python", "/code/a.py"], "cwd": ".", "timeout": None})
+
+
 def test_docker_timeout_bytes_are_coerced(monkeypatch):
     docker = DockerExecutor(image="python:3.11")
 

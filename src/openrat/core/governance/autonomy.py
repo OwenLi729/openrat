@@ -9,6 +9,7 @@ class AutonomyLevel(int, Enum):
 
 
 CAPABILITY_OBSERVE = "observe"
+CAPABILITY_HOST_EXEC = "host.exec"
 CAPABILITY_PARAMS_MODIFY = "params.modify"
 CAPABILITY_RUNTIME_FIX = "runtime.fix"
 CAPABILITY_CODE_EDIT = "code.edit"
@@ -16,6 +17,7 @@ CAPABILITY_CODE_EDIT = "code.edit"
 
 CAPABILITY_MIN_LEVEL: dict[str, AutonomyLevel] = {
     CAPABILITY_OBSERVE: AutonomyLevel.OBSERVE,
+    CAPABILITY_HOST_EXEC: AutonomyLevel.EXTENDED_EDIT,
     CAPABILITY_PARAMS_MODIFY: AutonomyLevel.PARAMS_ONLY,
     CAPABILITY_RUNTIME_FIX: AutonomyLevel.RUNTIME_REPAIR,
     CAPABILITY_CODE_EDIT: AutonomyLevel.EXTENDED_EDIT,

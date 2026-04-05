@@ -11,7 +11,7 @@ from openrat.core.errors import UserInputError
 
 def test_register_and_execute_happy_path():
     reg = ToolRegistry()
-    reg.register("add", lambda args: {"result": args["a"] + args["b"]}, capability="observe")
+    reg.register("add", lambda args: {"result": args["a"] + args["b"]}, capability="host.exec")
     result = reg.execute("add", {"a": 3, "b": 4})
     assert result == {"result": 7}
 
@@ -24,8 +24,8 @@ def test_execute_unknown_tool_raises_user_input_error():
 
 def test_list_returns_registered_names():
     reg = ToolRegistry()
-    reg.register("tool_a", lambda args: {}, capability="observe")
-    reg.register("tool_b", lambda args: {}, capability="observe")
+    reg.register("tool_a", lambda args: {}, capability="host.exec")
+    reg.register("tool_b", lambda args: {}, capability="host.exec")
     names = reg.list()
     assert "tool_a" in names
     assert "tool_b" in names
@@ -39,7 +39,7 @@ def test_list_empty_on_fresh_registry():
 def test_get_returns_callable():
     reg = ToolRegistry()
     fn = lambda args: {"ok": True}
-    reg.register("my_tool", fn, capability="observe")
+    reg.register("my_tool", fn, capability="host.exec")
     assert reg.get("my_tool") is fn
 
 
@@ -56,7 +56,7 @@ def test_execute_passes_arguments_correctly():
         return {"captured": True}
 
     reg = ToolRegistry()
-    reg.register("capture", capture, capability="observe")
+    reg.register("capture", capture, capability="host.exec")
     reg.execute("capture", {"key": "value", "num": 42})
     assert received == {"key": "value", "num": 42}
 
@@ -64,8 +64,8 @@ def test_execute_passes_arguments_correctly():
 def test_register_overwrites_existing_tool():
     """Registering the same name twice should replace the first tool."""
     reg = ToolRegistry()
-    reg.register("t", lambda args: {"v": 1}, capability="observe")
-    reg.register("t", lambda args: {"v": 2}, capability="observe")
+    reg.register("t", lambda args: {"v": 1}, capability="host.exec")
+    reg.register("t", lambda args: {"v": 2}, capability="host.exec")
     assert reg.execute("t", {}) == {"v": 2}
 
 
@@ -74,7 +74,7 @@ def test_execute_propagates_tool_exception():
         raise RuntimeError("tool failed")
 
     reg = ToolRegistry()
-    reg.register("boom", boom, capability="observe")
+    reg.register("boom", boom, capability="host.exec")
     with pytest.raises(RuntimeError, match="tool failed"):
         reg.execute("boom", {})
 
@@ -83,3 +83,15 @@ def test_register_requires_explicit_capability():
     reg = ToolRegistry()
     with pytest.raises(UserInputError, match="must declare"):
         reg.register("missing", lambda args: {})
+
+
+def test_register_untrusted_callable_with_non_host_exec_capability_rejected():
+    reg = ToolRegistry()
+    with pytest.raises(UserInputError, match="must declare capability='host.exec'"):
+        reg.register("unsafe", lambda args: {}, capability="observe")
+
+
+def test_register_trusted_callable_can_use_non_host_exec_capability():
+    reg = ToolRegistry()
+    reg.register("safe", lambda args: {"ok": True}, capability="observe", trusted=True)
+    assert reg.execute("safe", {}) == {"ok": True}

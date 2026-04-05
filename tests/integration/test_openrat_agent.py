@@ -142,12 +142,20 @@ def test_run_experiment_tool_actually_runs_script(monkeypatch):
 # ── custom tool registration ───────────────────────────────────────────────────
 
 def test_custom_tool_registered_and_callable():
-    agent = OpenRatAgent({"provider": "openai_compatible", "api_key": None, "model_name": "x"})
+    agent = OpenRatAgent(
+        {
+            "provider": "openai_compatible",
+            "api_key": None,
+            "model_name": "x",
+            "autonomy": 3,
+            "user_approvals": {"host.exec"},
+        }
+    )
 
     def greet(args):
         return {"greeting": f"hello {args['name']}"}
 
-    agent.tool_registry.register("greet", greet, capability="observe")
+    agent.tool_registry.register("greet", greet, capability="host.exec")
     result = agent.tool_registry.execute("greet", {"name": "openrat"})
     assert result == {"greeting": "hello openrat"}
 
@@ -173,8 +181,16 @@ def test_chat_loop_invokes_custom_tool(monkeypatch):
                 )
             return ModelResponse(content="done", tool_calls=[])
 
-    agent = OpenRatAgent({"provider": "openai_compatible", "api_key": None, "model_name": "x"})
-    agent.tool_registry.register("my_tool", my_tool, capability="observe")
+    agent = OpenRatAgent(
+        {
+            "provider": "openai_compatible",
+            "api_key": None,
+            "model_name": "x",
+            "autonomy": 3,
+            "user_approvals": {"host.exec"},
+        }
+    )
+    agent.tool_registry.register("my_tool", my_tool, capability="host.exec")
     agent.agent_loop.adapter = _AdapterCallsTool()
 
     resp = agent.chat("go")

@@ -1,14 +1,23 @@
 from pathlib import Path
 from collections.abc import Mapping
 from typing import Any
+from pathlib import PurePosixPath
 
 from .base import BaseTool, ToolProposal
 from openrat.executors import ExecutorRegistry
 from openrat.core.errors import UserInputError, ExecutionError
+from openrat.sandbox.guardrails import validate_command_guardrails
 
 
 class ExecutorTool(BaseTool):
-    """Execute commands by delegating to a configured executor backend."""
+    """Execute Python scripts via docker backend with a fixed entrypoint.
+
+    Security constraints:
+    - shell entrypoints (sh/bash) are disallowed
+    - inline execution flags (-c / -m) are disallowed
+    - first token must be python/python3
+    - second token must be a .py script path
+    """
 
     name = "executor"
     description = "delegate command execution to registered executor backends"
@@ -48,6 +57,28 @@ class ExecutorTool(BaseTool):
         command = payload.get("command")
         if not isinstance(command, list) or not command or not all(isinstance(part, str) for part in command):
             raise UserInputError("command must be a non-empty list[str]")
+
+        validate_command_guardrails(command)
+
+        executable = command[0].strip()
+        if executable not in {"python", "python3"}:
+            raise UserInputError("only python/python3 entrypoints are allowed")
+
+        if len(command) < 2:
+            raise UserInputError("command must include a script path as the second argument")
+
+        script_target = command[1].strip()
+        if script_target in {"-c", "-m", "-"} or script_target.startswith("-"):
+            raise UserInputError("inline python execution is not allowed; pass a script path")
+
+        script_path = PurePosixPath(script_target)
+        if script_path.suffix != ".py":
+            raise UserInputError("script target must end with .py")
+
+        shell_tokens = {"sh", "bash", "zsh", "fish"}
+        for token in command:
+            if token.strip() in shell_tokens:
+                raise UserInputError("shell entrypoints are not allowed")
 
         cwd = payload.get("cwd")
         if cwd is not None:

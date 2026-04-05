@@ -42,7 +42,7 @@ def test_executor_tool_routes_to_backend(monkeypatch, tmp_path):
     session = _observe_session()
     payload = {
         "executor_type": "docker",
-        "command": ["python", "-c", "print('ok')"],
+        "command": ["python", "job.py"],
         "cwd": str(tmp_path),
         "timeout": 30,
         "limits": {"memory": "128m", "cpus": "0.5"},
@@ -66,7 +66,7 @@ def test_executor_tool_unknown_executor_type_raises(monkeypatch, tmp_path):
     session = _observe_session()
     payload = {
         "executor_type": "missing",
-        "command": ["python", "-c", "print('x')"],
+        "command": ["python", "job.py"],
         "cwd": str(tmp_path),
     }
 
@@ -87,7 +87,7 @@ def test_executor_tool_enforces_session_capability(monkeypatch, tmp_path):
     tool = ExecutorTool()
     payload = {
         "executor_type": "docker",
-        "command": ["python", "-c", "print('x')"],
+        "command": ["python", "job.py"],
         "cwd": str(tmp_path),
     }
 
@@ -103,7 +103,7 @@ def test_executor_tool_wraps_backend_exception(monkeypatch, tmp_path):
     session = _observe_session()
     payload = {
         "executor_type": "docker",
-        "command": ["python", "-c", "print('x')"],
+        "command": ["python", "job.py"],
         "cwd": str(tmp_path),
     }
 
@@ -119,7 +119,7 @@ def test_executor_tool_rejects_caller_provided_mount_paths(monkeypatch, tmp_path
     session = _observe_session()
     payload = {
         "executor_type": "docker",
-        "command": ["python", "-c", "print('x')"],
+        "command": ["python", "job.py"],
         "cwd": str(tmp_path),
         "code_dir": str(tmp_path),
     }
@@ -140,16 +140,47 @@ def test_executor_tool_registers_and_executes_via_registry(monkeypatch, tmp_path
         "executor",
         lambda args: tool.run(args, session),
         capability=tool.capability,
+        trusted=True,
     )
 
     result = registry.execute(
         "executor",
         {
             "executor_type": "docker",
-            "command": ["python", "-c", "print('registry')"],
+            "command": ["python", "job.py"],
             "cwd": str(tmp_path),
         },
     )
 
     assert result["status"] == "completed"
     assert backend.calls
+
+
+def test_executor_tool_blocks_inline_python_execution(tmp_path):
+    tool = ExecutorTool()
+    session = _observe_session()
+
+    with pytest.raises(UserInputError, match="inline python execution"):
+        tool.run(
+            {
+                "executor_type": "docker",
+                "command": ["python", "-c", "print('x')"],
+                "cwd": str(tmp_path),
+            },
+            session,
+        )
+
+
+def test_executor_tool_blocks_shell_entrypoints(tmp_path):
+    tool = ExecutorTool()
+    session = _observe_session()
+
+    with pytest.raises(UserInputError, match="only python/python3 entrypoints"):
+        tool.run(
+            {
+                "executor_type": "docker",
+                "command": ["sh", "-c", "echo hi"],
+                "cwd": str(tmp_path),
+            },
+            session,
+        )

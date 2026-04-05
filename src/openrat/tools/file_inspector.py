@@ -1,4 +1,5 @@
 from pathlib import Path
+from pathlib import PurePath
 from collections.abc import Mapping
 from typing import Any
 
@@ -16,11 +17,23 @@ class FileInspectorTool(BaseTool):
 
     DEFAULT_MAX_BYTES = 8192
 
+    def __init__(self, governance: Any = None, *, safe_base_dir: str | Path | None = None):
+        super().__init__(governance=governance)
+        base = Path(safe_base_dir) if safe_base_dir is not None else Path.cwd()
+        self._safe_base_dir = base.resolve()
+
+    @property
+    def safe_base_dir(self) -> Path:
+        return self._safe_base_dir
+
     def _validate_payload(self, payload: Mapping[str, Any]) -> None:
         if not isinstance(payload, Mapping):
             raise UserInputError("payload must be a mapping")
         if "path" not in payload:
             raise UserInputError("path is required")
+
+        if "base_dir" in payload:
+            raise UserInputError("base_dir override is not allowed")
 
         mode = payload.get("mode", "text")
         if mode not in {"text", "stat"}:
@@ -35,9 +48,15 @@ class FileInspectorTool(BaseTool):
         self.governance = session
         self.validate(proposal)
 
-        path_value = str(payload["path"])
-        base_dir = Path(str(payload.get("base_dir", Path.cwd()))).resolve()
-        target = (base_dir / path_value).resolve() if not Path(path_value).is_absolute() else Path(path_value).resolve()
+        path_value = str(payload["path"]).strip()
+        rel_path = PurePath(path_value)
+        if rel_path.is_absolute():
+            raise UserInputError("absolute paths are not allowed")
+        if any(part == ".." for part in rel_path.parts):
+            raise UserInputError("path traversal is not allowed")
+
+        base_dir = self.safe_base_dir
+        target = (base_dir / rel_path).resolve()
 
         try:
             target.relative_to(base_dir)

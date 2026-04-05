@@ -42,7 +42,7 @@ def test_file_inspector_reads_text_file(tmp_path):
     file_path = tmp_path / "out.txt"
     file_path.write_text("hello tools")
 
-    tool = FileInspectorTool()
+    tool = FileInspectorTool(safe_base_dir=tmp_path)
     session = Session(
         autonomy=AutonomyLevel.OBSERVE,
         patch_policy="interactive",
@@ -51,8 +51,7 @@ def test_file_inspector_reads_text_file(tmp_path):
 
     result = tool.run(
         {
-            "path": str(file_path),
-            "base_dir": str(tmp_path),
+            "path": "out.txt",
             "mode": "text",
             "max_bytes": 50,
         },
@@ -70,22 +69,51 @@ def test_file_inspector_blocks_path_outside_base_dir(tmp_path):
     inside.write_text("inside")
     outside.write_text("outside")
 
-    tool = FileInspectorTool()
+    tool = FileInspectorTool(safe_base_dir=tmp_path)
     session = Session(
         autonomy=AutonomyLevel.OBSERVE,
         patch_policy="interactive",
         user_approvals={"observe"},
     )
 
-    with pytest.raises(UserInputError, match="inside base_dir"):
+    with pytest.raises(UserInputError, match="absolute paths are not allowed"):
         tool.run(
             {
                 "path": str(outside),
-                "base_dir": str(tmp_path),
                 "mode": "text",
             },
             session,
         )
+
+
+def test_file_inspector_blocks_path_traversal(tmp_path):
+    nested = tmp_path / "nested"
+    nested.mkdir()
+    (tmp_path / "x.txt").write_text("x")
+
+    tool = FileInspectorTool(safe_base_dir=nested)
+    session = Session(
+        autonomy=AutonomyLevel.OBSERVE,
+        patch_policy="interactive",
+        user_approvals={"observe"},
+    )
+
+    with pytest.raises(UserInputError, match="path traversal"):
+        tool.run({"path": "../x.txt", "mode": "text"}, session)
+
+
+def test_file_inspector_rejects_base_dir_override(tmp_path):
+    (tmp_path / "x.txt").write_text("x")
+
+    tool = FileInspectorTool(safe_base_dir=tmp_path)
+    session = Session(
+        autonomy=AutonomyLevel.OBSERVE,
+        patch_policy="interactive",
+        user_approvals={"observe"},
+    )
+
+    with pytest.raises(UserInputError, match="base_dir override"):
+        tool.run({"path": "x.txt", "base_dir": str(tmp_path)}, session)
 
 
 def test_patch_proposal_records_proposed_patch_only():

@@ -30,10 +30,12 @@ app = Openrat({
     "base_url": "https://api.openai.com/v1",
     "api_key": os.environ.get("OPENAI_API_KEY", ""),
     "model_name": "gpt-4o",
+    "autonomy": 3,
+    "user_approvals": {"host.exec"},
 })
 
 # Register alongside the built-in run_experiment tool
-app.tool_registry.register("read_metrics", read_metrics, capability="observe")
+app.tool_registry.register("read_metrics", read_metrics, capability="host.exec")
 
 # ── Run ───────────────────────────────────────────────────────────────────────
 response = app.chat(

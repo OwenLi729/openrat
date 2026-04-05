@@ -22,8 +22,8 @@ Openrat (openrat/api/openrat.py)
    ├─── Direct compatibility path (non-planned)
    │       app.run("experiment.py")
    │       └── OpenRatAgent.run(...)
-   │               └── _choose_executor() → LocalExecutor | ProductionDockerExecutor
-   │                       └── sandbox.exec.run_command → subprocess
+    │               └── _choose_executor() → ProductionDockerExecutor
+    │                       └── docker run (hardened flags)
    │
    └─── LLM agent loop compatibility path (requires model config)
        app.chat([Message(role="user", content="...")])
@@ -58,10 +58,9 @@ Key components:
 |-----------|----------|------|
 | `Openrat` | `openrat/api/openrat.py` | Recommended facade for framework workflow |
 | `OpenRatAgent` | `openrat/api/runner.py` | Low-level runtime + LLM adapter |
-| `_choose_executor` | `openrat/api/runner.py` | Picks Docker or local based on availability |
+| `_choose_executor` | `openrat/api/runner.py` | Selects hardened Docker executor |
 | `ProductionDockerExecutor` | `openrat/executors/docker_executor.py` | Hardened Docker execution |
-| `LocalExecutor` | `openrat/executors/local_executor.py` | Subprocess execution for dev/trust |
-| `run_command` | `openrat/sandbox/exec.py` | Subprocess wrapper with timeout + capture |
+| `validate_command_guardrails` | `openrat/sandbox/guardrails.py` | Defense-in-depth command pattern blocking |
 
 ---
 
@@ -123,25 +122,30 @@ def my_tool(arguments: dict) -> dict:
     # do something
     return {"result": 42}
 
-agent = Openrat({"provider": "openai_compatible", ...})
-agent.tool_registry.register("my_tool", my_tool, capability="observe")
+agent = Openrat({
+    "provider": "openai_compatible",
+    "autonomy": 3,
+    "user_approvals": {"host.exec"},
+    ...
+})
+agent.tool_registry.register("my_tool", my_tool, capability="host.exec")
 ```
 
 Any registered tool callable will be invoked when the model emits a matching tool
 call. It receives the raw `arguments` dict and must return a JSON-serialisable dict.
 
+Untrusted callable tools require explicit `host.exec` capability and user opt-in.
+
 ---
 
 ## Executor policy
 
-By default OpenRat prefers Docker when it is available, falling back to local
-subprocess. You can override this:
+OpenRat uses Docker-only execution (production-hardened):
 
 ```python
 from openrat.executors import set_executor_policy
 set_executor_policy("production")   # always Docker
-set_executor_policy("stub")         # lightweight stubs (CI/testing)
-set_executor_policy("auto")         # default: Docker if available
+set_executor_policy("auto")         # alias of production
 ```
 
 ---
@@ -151,6 +155,6 @@ set_executor_policy("auto")         # default: Docker if available
 - Experiments are copied into an ephemeral per-run temp directory; the original
   workspace is not modified.
 - Docker runs have `--network none`, `--security-opt no-new-privileges`,
-  `--pids-limit 100`, and configurable memory/CPU limits.
+    `--cap-drop=ALL`, `--read-only`, `--tmpfs /tmp`, `--pids-limit 100`, and
+    bounded memory/CPU/timeout limits by default.
 - Experiment paths are validated to be inside the current working directory.
-- The `LocalExecutor` is intended for trusted/dev environments only.

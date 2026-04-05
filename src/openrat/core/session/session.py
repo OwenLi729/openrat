@@ -64,6 +64,9 @@ class Session:
         )
 
     def check_capability(self, capability: str) -> tuple[bool, str | None]:
+        if capability == "host.exec" and capability not in self.user_approvals:
+            return False, "Capability 'host.exec' requires explicit user opt-in"
+
         level = required_level_for(capability)
         if level is None:
             return False, f"Capability '{capability}' is unknown"

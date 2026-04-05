@@ -198,13 +198,24 @@ See `examples/chat_agent.py` for a complete example.
 Register custom functions that the LLM can call:
 
 ```python
+from openrat import Openrat
+
 def read_metrics(arguments: dict) -> dict:
     """Custom tool callable by the LLM."""
     metric = arguments.get("metric", "accuracy")
     # Implement your metric reading logic
     return {"metric": metric, "value": 0.95}
 
-app.tool_registry.register("read_metrics", read_metrics, capability="observe")
+app = Openrat({
+    "provider": "openai_compatible",
+    "api_key": "...",
+    "model_name": "...",
+    "autonomy": 3,
+    "user_approvals": {"host.exec"},
+})
+
+# Untrusted callable tools require explicit host.exec opt-in
+app.tool_registry.register("read_metrics", read_metrics, capability="host.exec")
 
 # Now the LLM can call this tool
 response = app.chat("Check the accuracy metric for me.")
@@ -238,7 +249,18 @@ artifact.governance_report()
 
 All execution is routed through the `DockerExecutor`, which runs scripts in an
 ephemeral container with `--network none`, `--security-opt no-new-privileges`,
-`--pids-limit 100`, and configurable memory/CPU limits. 
+`--cap-drop=ALL`, `--read-only`, `--tmpfs /tmp`, `--pids-limit 100`, and
+bounded memory/CPU limits.
+
+Openrat is safe-by-default for execution limits:
+
+- default timeout: `300s`
+- max timeout: `3600s`
+- default memory: `512m` (max `4g`)
+- default CPU: `1.0` (max `4.0`)
+
+Unbounded limits are blocked unless explicitly enabled by user config
+(`allow_unbounded_limits=True`).
 
 ```python
 from openrat.executors import set_executor_policy

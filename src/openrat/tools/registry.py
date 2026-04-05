@@ -22,11 +22,19 @@ class ToolRegistry:
         name: str,
         tool: Callable[[Mapping[str, Any]], Mapping[str, Any]],
         capability: str | None = None,
+        *,
+        trusted: bool = False,
     ) -> None:
         """Register a callable tool under `name`."""
         effective_capability = capability or getattr(tool, "capability", None)
         if not effective_capability:
             raise UserInputError(f"tool '{name}' must declare a required capability")
+
+        is_trusted_callable = bool(trusted or getattr(tool, "__openrat_trusted__", False))
+        if not is_trusted_callable and str(effective_capability) != "host.exec":
+            raise UserInputError(
+                f"tool '{name}' is an untrusted callable and must declare capability='host.exec'"
+            )
 
         self._tools[name] = tool
         self._capabilities[name] = str(effective_capability)

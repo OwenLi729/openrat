@@ -36,6 +36,21 @@ def test_session_rejects_excessive_autonomy():
         session.authorize("runtime.fix")
 
 
+def test_host_exec_requires_explicit_opt_in_even_without_approval_mode():
+    session = Session(autonomy=AutonomyLevel.EXTENDED_EDIT, patch_policy="interactive")
+    with pytest.raises(PolicyViolation, match="explicit user opt-in"):
+        session.authorize("host.exec")
+
+
+def test_host_exec_allowed_with_explicit_approval_and_sufficient_autonomy():
+    session = Session(
+        autonomy=AutonomyLevel.EXTENDED_EDIT,
+        patch_policy="interactive",
+        user_approvals={"host.exec"},
+    )
+    assert session.authorize("host.exec") is True
+
+
 def test_session_auto_patch_policy_allows_within_autonomy():
     session = Session(autonomy=AutonomyLevel.PARAMS_ONLY, patch_policy="auto")
     assert session.authorize("params.modify") is True
