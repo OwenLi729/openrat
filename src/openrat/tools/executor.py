@@ -4,19 +4,22 @@ from typing import Any
 from pathlib import PurePosixPath
 
 from .base import BaseTool, ToolProposal
-from openrat.executors import ExecutorRegistry
+from openrat._executors import ExecutorRegistry
 from openrat.core.errors import UserInputError, ExecutionError
 from openrat.sandbox.guardrails import validate_command_guardrails
 
 
 class ExecutorTool(BaseTool):
-    """Execute Python scripts via docker backend with a fixed entrypoint.
+    """Execute Python scripts via an explicitly selected backend with a fixed entrypoint.
 
     Security constraints:
     - shell entrypoints (sh/bash) are disallowed
     - inline execution flags (-c / -m) are disallowed
     - first token must be python/python3
     - second token must be a .py script path
+
+    Docker remains the default and recommended backend. Local execution is
+    available only when `executor_type="local"` is explicitly selected.
     """
 
     name = "executor"

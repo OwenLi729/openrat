@@ -90,6 +90,43 @@ class Artifact:
                 "failed_tasks": failed,
             },
         )
+
+    @classmethod
+    def from_execution_result(
+        cls,
+        *,
+        result: Mapping[str, Any],
+        session: "Session",
+        path: str,
+    ) -> "Artifact":
+        executor_name = str(result.get("executor", "unknown"))
+        execution_error = result.get("security_error")
+        logs = []
+        if execution_error:
+            logs.append(str(execution_error))
+
+        diagnostics = {"governance": session.governance_report()}
+        if execution_error:
+            diagnostics["execution_error"] = str(execution_error)
+
+        return cls.create(
+            observations={
+                "execution": dict(result),
+            },
+            evaluations={
+                "status": result.get("status", "unknown"),
+                "metrics": {"duration": result.get("duration")},
+            },
+            diagnostics=diagnostics,
+            logs=tuple(logs),
+            patches_applied=tuple(p.get("patch_id", "") for p in session.patches_applied),
+            metadata={
+                "session_id": str(session.id),
+                "path": path,
+                "executor": executor_name,
+                "sandboxed": bool(result.get("sandboxed", executor_name == "docker")),
+            },
+        )
     
     def summarize(self) -> dict[str, Any]:
         return {

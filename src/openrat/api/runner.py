@@ -7,8 +7,8 @@ import re
 
 from openrat.core.governance.autonomy import AutonomyLevel
 from openrat.core.session.session import Session
-from openrat.executors import DockerExecutor
-from openrat.core.errors import UserInputError, EnvironmentError, InternalError
+from openrat._executors import DockerExecutor, LocalExecutor
+from openrat.core.errors import UserInputError, EnvironmentError, InternalError, LocalExecutionBypassesSandboxError
 from openrat.model.types import Message, ModelResponse
 from openrat.core.protocols import ExecutorProtocol, ToolRegistryProtocol
 from openrat.sandbox.guardrails import validate_command_guardrails
@@ -49,20 +49,23 @@ def validate_experiment_path(path: str) -> Path:
 _validate_experiment_path = validate_experiment_path
 
 
-def _choose_executor(preferred: str | None, docker_image: str) -> ExecutorProtocol:
-    if preferred is not None and preferred != "docker":
+def _choose_executor(preferred: str | None, docker_image: str) -> tuple[str, ExecutorProtocol]:
+    if preferred is not None and preferred not in {"docker", "local"}:
         raise UserInputError(
             f"unsupported executor '{preferred}'",
-            hint="Openrat requires executor='docker'.",
+            hint="Supported executors: 'docker' (default), 'local' (trusted-host only).",
         )
+
+    if preferred == "local":
+        return "local", LocalExecutor()
 
     if not shutil.which("docker"):
         raise EnvironmentError(
             "docker executor requested but docker is not available",
-            hint="Install Docker to run Openrat experiments.",
+            hint="Install Docker or explicitly opt into executor='local' for trusted-host execution.",
         )
 
-    return DockerExecutor(image=docker_image)
+    return "docker", DockerExecutor(image=docker_image)
 
 
 def _validate_managed_mount_path(path: Path, *, allowed_base: Path, label: str) -> str:
@@ -163,7 +166,7 @@ def run(
     create separate `code/` (read-only) and `outputs/` (writable) mounts for Docker.
     """
     p = validate_experiment_path(path)
-    exec_obj = _choose_executor(executor, docker_image)
+    executor_name, exec_obj = _choose_executor(executor, docker_image)
 
     timeout_limit, memory_limit, cpu_limit = _normalize_limits(
         timeout=timeout,
@@ -183,20 +186,27 @@ def run(
             dest = code_dir / p.name
             shutil.copy2(p, dest)
 
-            command = ["python", f"/code/{dest.name}"]
+            if executor_name == "docker":
+                command = ["python", f"/code/{dest.name}"]
+            else:
+                command = ["python", str(dest)]
             validate_command_guardrails(command)
 
             payload = {
-                # run using container-local paths
                 "command": command,
                 "cwd": str(outputs_dir),
                 "timeout": timeout_limit,
-                "code_dir": _validate_managed_mount_path(code_dir, allowed_base=td_path, label="code_dir"),
-                "outputs_dir": _validate_managed_mount_path(outputs_dir, allowed_base=td_path, label="outputs_dir"),
                 "limits": {"memory": memory_limit, "cpus": cpu_limit},
                 "allow_unbounded_limits": allow_unbounded_limits,
             }
+            if executor_name == "docker":
+                payload["code_dir"] = _validate_managed_mount_path(code_dir, allowed_base=td_path, label="code_dir")
+                payload["outputs_dir"] = _validate_managed_mount_path(outputs_dir, allowed_base=td_path, label="outputs_dir")
+
             result = exec_obj.execute(payload)
+            if executor_name == "local":
+                result = dict(result)
+                result["security_error"] = LocalExecutionBypassesSandboxError.DEFAULT_MESSAGE
             return result
 
     command = ["python", str(p)]
@@ -211,6 +221,9 @@ def run(
     }
 
     result = exec_obj.execute(payload)
+    if executor_name == "local":
+        result = dict(result)
+        result["security_error"] = LocalExecutionBypassesSandboxError.DEFAULT_MESSAGE
     return result
 
 
@@ -230,6 +243,7 @@ class OpenRatAgent:
         self.executor = self.config.get("executor")
         self.docker_image = self.config.get("docker_image", "python:3.11")
         self.allow_unbounded_limits = bool(self.config.get("allow_unbounded_limits", False))
+        self._selected_executor_name = "docker" if self.executor is None else str(self.executor)
 
         session_from_config = self.config.get("session")
         if isinstance(session_from_config, Session):
@@ -285,7 +299,7 @@ class OpenRatAgent:
         self.session.authorize(
             "observe",
             action="runner.run",
-            metadata={"path": path},
+            metadata={"path": path, "executor": self._selected_executor_name},
         )
         return run(
             path,

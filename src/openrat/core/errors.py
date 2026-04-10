@@ -50,6 +50,21 @@ class InternalError(OpenratError):
     """Invariant violation or unreachable state inside Openrat."""
 
 
+class LocalExecutionBypassesSandboxError(OpenratError):
+    """Trusted-host execution does not provide container sandboxing."""
+
+    DEFAULT_MESSAGE = "Local execution bypasses container sandboxing."
+
+    def __init__(
+        self,
+        message: str | None = None,
+        *,
+        cause: Optional[BaseException] = None,
+        hint: Optional[str] = None,
+    ) -> None:
+        super().__init__(message or self.DEFAULT_MESSAGE, cause=cause, hint=hint)
+
+
 __all__ = [
     "OpenratError",
     "UserInputError",
@@ -57,4 +72,5 @@ __all__ = [
     "ExecutionError",
     "EnvironmentError",
     "InternalError",
+    "LocalExecutionBypassesSandboxError",
 ]

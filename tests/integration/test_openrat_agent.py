@@ -12,8 +12,9 @@ import subprocess
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from openrat.api.runner import OpenRatAgent, validate_experiment_path
-from openrat.core.errors import UserInputError, EnvironmentError
+from openrat.core.errors import UserInputError, EnvironmentError, LocalExecutionBypassesSandboxError
 from openrat.model.types import Message, ModelResponse, ToolCall
+from openrat.core.artifact import Artifact
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -275,3 +276,41 @@ def test_direct_run_isolate_false_still_passes_resource_limits(monkeypatch):
     assert "512m" in captured["cmd"]
     assert "--cpus" in captured["cmd"]
     assert "1.0" in captured["cmd"]
+
+
+def test_direct_run_local_requires_explicit_selection(monkeypatch):
+    completed = subprocess.CompletedProcess(args=["python"], returncode=0, stdout="hello world\n", stderr="")
+    monkeypatch.setattr("subprocess.run", lambda *a, **kw: completed)
+    agent = OpenRatAgent({"executor": "local"})
+    result = agent.run(str(FIXTURES_DIR / "hello.py"), isolate=True)
+    assert result["status"] == "completed"
+    assert result["executor"] == "local"
+    assert result["security_error"] == LocalExecutionBypassesSandboxError.DEFAULT_MESSAGE
+
+
+def test_direct_run_docker_missing_does_not_fallback_to_local(monkeypatch):
+    monkeypatch.setattr("openrat.api.runner.shutil.which", lambda name: None)
+    agent = OpenRatAgent({"executor": "docker"})
+    with pytest.raises(EnvironmentError, match="docker is not available"):
+        agent.run(str(FIXTURES_DIR / "hello.py"), isolate=True)
+
+
+def test_runner_governance_metadata_records_executor(monkeypatch):
+    completed = subprocess.CompletedProcess(args=["python"], returncode=0, stdout="hello world\n", stderr="")
+    monkeypatch.setattr("subprocess.run", lambda *a, **kw: completed)
+    agent = OpenRatAgent({"executor": "local"})
+    agent.run(str(FIXTURES_DIR / "hello.py"), isolate=False)
+    events = agent.session.governance_report()["events"]
+    assert events[-1]["metadata"]["executor"] == "local"
+
+
+def test_direct_artifact_records_executor(monkeypatch):
+    completed = subprocess.CompletedProcess(args=["python"], returncode=0, stdout="hello world\n", stderr="")
+    monkeypatch.setattr("subprocess.run", lambda *a, **kw: completed)
+
+    agent = OpenRatAgent({"executor": "local"})
+    result = agent.run(str(FIXTURES_DIR / "hello.py"), isolate=False)
+    artifact = Artifact.from_execution_result(result=result, session=agent.session, path=str(FIXTURES_DIR / "hello.py"))
+
+    assert artifact.metadata["executor"] == "local"
+    assert artifact.diagnostics["execution_error"] == LocalExecutionBypassesSandboxError.DEFAULT_MESSAGE

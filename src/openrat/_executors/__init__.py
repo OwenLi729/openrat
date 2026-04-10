@@ -1,4 +1,8 @@
-"""Executor backends and registry.
+
+"""
+Executor backends and registry.
+
+This namespace is intentionally private and not part of the public API.
 
 Internal module: Contains Docker and local execution strategies. Users
 should not import from this module directly.
@@ -15,6 +19,7 @@ Executor configuration is handled via Openrat config dict:
 """
 
 from .docker_executor import DockerExecutor
+from .local_executor import LocalExecutor
 from .registry import ExecutorRegistry as _ExecutorRegistry
 from openrat.core.errors import UserInputError
 
@@ -27,6 +32,7 @@ def set_executor_policy(mode: str):
     EXECUTOR_POLICY["mode"] = "production"
     ExecutorRegistry.clear()
     ExecutorRegistry.register("docker", DockerExecutor())
+    ExecutorRegistry.register("local", LocalExecutor())
 
 
 ExecutorRegistry = _ExecutorRegistry()
@@ -37,4 +43,5 @@ __all__ = [
     "set_executor_policy",
     "EXECUTOR_POLICY",
     "DockerExecutor",
+    "LocalExecutor",
 ]

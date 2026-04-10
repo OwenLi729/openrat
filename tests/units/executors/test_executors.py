@@ -1,16 +1,19 @@
 import sys
 from pathlib import Path
 import subprocess
+import pytest
 
 root = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(root))
 
-from openrat.executors import ExecutorRegistry
-from openrat.executors.docker_executor import DockerExecutor
+from openrat._executors import ExecutorRegistry
+from openrat._executors.docker_executor import DockerExecutor
+from openrat._executors.local_executor import LocalExecutor
+from openrat.core.errors import LocalExecutionBypassesSandboxError
 
 
-def test_registry_only_contains_docker():
-    assert ExecutorRegistry.list() == ["docker"]
+def test_registry_contains_docker_and_local():
+    assert ExecutorRegistry.list() == ["docker", "local"]
 
 
 def test_docker_executor_runs_subprocess(monkeypatch):
@@ -96,3 +99,38 @@ def test_docker_timeout_bytes_are_coerced(monkeypatch):
     assert isinstance(result["stdout"], str)
     assert isinstance(result["stderr"], str)
     assert "Docker process timed out." in result["stderr"]
+
+
+def test_local_executor_runs_subprocess(monkeypatch, tmp_path):
+    local = ExecutorRegistry.get("local")
+
+    completed = subprocess.CompletedProcess(
+        args=["python", "hello.py"],
+        returncode=0,
+        stdout="ok",
+        stderr="",
+    )
+    monkeypatch.setattr("subprocess.run", lambda *a, **k: completed)
+
+    payload = {
+        "command": ["python", "hello.py"],
+        "cwd": str(tmp_path),
+        "timeout": 5,
+        "limits": {"memory": "256m", "cpus": "0.5"},
+    }
+    res = local.execute(payload)
+    assert res["status"] == "completed"
+    assert res["executor"] == "local"
+    assert res["sandboxed"] is False
+    assert res["security_error"] == LocalExecutionBypassesSandboxError.DEFAULT_MESSAGE
+
+
+def test_local_executor_blocks_shell_entrypoints(tmp_path):
+    local = LocalExecutor()
+
+    with pytest.raises(Exception, match="shell entrypoints are not allowed"):
+        local.execute({
+            "command": ["bash", "script.sh"],
+            "cwd": str(tmp_path),
+            "timeout": 5,
+        })

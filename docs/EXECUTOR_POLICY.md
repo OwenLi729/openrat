@@ -1,24 +1,30 @@
 # Executor Policy
 
-OpenRat routes all execution through a single, hardened **`DockerExecutor`**.
-There is no local or stub execution path in production.
+OpenRat keeps Docker-backed execution as the default, recommended, and safest
+execution path. OpenRat also supports an explicit trusted-host-only local
+execution mode for developer convenience and environments where Docker is unavailable.
+
+Local execution is **not** a sandbox and is never used as an implicit fallback.
 
 ## Architecture
 
 ```
 Openrat / OpenRatAgent
     └── _choose_executor()
-            └── DockerExecutor          ← the only registered backend
-                    └── docker run --rm
-                            --network none
-                            --security-opt no-new-privileges
-                            --cap-drop ALL
-                            --read-only
-                            --tmpfs /tmp
-                            --pids-limit 100
-                            -u <uid>:<gid>
-                            --memory <limit>
-                            --cpus <limit>
+        ├── Docker executor         ← default / recommended
+        │       └── docker run --rm
+        │               --network none
+        │               --security-opt no-new-privileges
+        │               --cap-drop ALL
+        │               --read-only
+        │               --tmpfs /tmp
+        │               --pids-limit 100
+        │               -u <uid>:<gid>
+        │               --memory <limit>
+        │               --cpus <limit>
+        └── Local executor          ← explicit trusted-host opt-in only
+            └── subprocess.run(...) with guardrails, timeout,
+            and best-effort host resource limits
 ```
 
 ## Security properties
@@ -35,9 +41,28 @@ Openrat / OpenRatAgent
 | Filesystem | Ephemeral per-run temp directory; `/code` read-only, `/outputs` writable |
 | Cleanup | Container removed immediately on exit (`--rm`) |
 
+## Local executor properties
+
+When `executor="local"` is explicitly selected:
+
+| Property | Value |
+|----------|-------|
+| Container isolation | None |
+| Network isolation | None |
+| Command guardrails | Still enforced |
+| Governance / autonomy | Still enforced |
+| Patch policy | Still enforced |
+| Tool capability enforcement | Still enforced |
+| Timeout | Enforced |
+| Resource limits | Best-effort host limits |
+
+All local execution results include the warning:
+
+> Local execution bypasses container sandboxing.
+
 ## Resource limits and timeout
 
-Openrat enforces bounded execution limits by default:
+Openrat enforces bounded execution limits by default for both executors:
 
 | Control | Default | Maximum |
 |---------|---------|---------|
@@ -57,17 +82,9 @@ app = Openrat({
 
 ## Runtime API
 
-Both modes below resolve to the same `DockerExecutor`:
-
-```python
-from openrat.executors import set_executor_policy
-
-set_executor_policy("production")   # explicit
-set_executor_policy("auto")          # default
-```
-
-Calling `set_executor_policy("stub")` or any other unknown mode raises a
-`ValueError`.
+Executors are internal runtime implementation details. Users select execution
+mode through `Openrat` configuration or the CLI, not by importing executor
+classes, registries, or policy helpers.
 
 ## Configuration
 
@@ -77,7 +94,7 @@ Pass `executor` and optional resource limits in the `Openrat` config dict:
 from openrat import Openrat
 
 app = Openrat({
-    "executor": "docker",          # required
+    "executor": "docker",          # default / recommended
     "docker_image": "python:3.11", # image to run scripts in
     "memory": "512m",              # bounded; max 4g unless allow_unbounded_limits=True
     "cpus": "1.0",                 # bounded; max 4.0 unless allow_unbounded_limits=True
@@ -85,20 +102,27 @@ app = Openrat({
 })
 ```
 
-## Registry
-
-The `ExecutorRegistry` is keyed by executor name. Only `"docker"` is registered:
+To opt into trusted-host execution explicitly:
 
 ```python
-from openrat.executors.registry import ExecutorRegistry
-
-ExecutorRegistry.list()   # ["docker"]
-executor = ExecutorRegistry.get("docker")
+app = Openrat({
+    "executor": "local",
+})
 ```
+
+Use `local` only for trusted workflows, fast iteration, or environments without
+Docker. Prefer Docker for untrusted, long-running, or reproducibility-sensitive
+experiments.
+
+## Internal registry
+
+Openrat maintains an internal executor registry under the private runtime
+namespace. It is not part of the public API and should not be imported by user
+code.
 
 ## Executor result
 
-`DockerExecutor.execute()` returns:
+Executors return a serializable result mapping. Docker results include:
 
 ```python
 {
@@ -109,5 +133,16 @@ executor = ExecutorRegistry.get("docker")
     "stderr": str,
     "timed_out": bool,
     "duration": float,   # seconds
+}
+```
+
+Local results additionally include:
+
+```python
+{
+    "executor": "local",
+    "sandboxed": False,
+    "security_error": "Local execution bypasses container sandboxing.",
+    "resource_limits_applied": bool,
 }
 ```

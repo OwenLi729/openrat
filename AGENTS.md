@@ -22,7 +22,7 @@ Openrat (openrat/api/openrat.py)
    ├─── Direct compatibility path (non-planned)
    │       app.run("experiment.py")
    │       └── OpenRatAgent.run(...)
-    │               └── _choose_executor() → ProductionDockerExecutor
+    │               └── _choose_executor() → internal Docker executor
     │                       └── docker run (hardened flags)
    │
    └─── LLM agent loop compatibility path (requires model config)
@@ -59,7 +59,7 @@ Key components:
 | `Openrat` | `openrat/api/openrat.py` | Recommended facade for framework workflow |
 | `OpenRatAgent` | `openrat/api/runner.py` | Low-level runtime + LLM adapter |
 | `_choose_executor` | `openrat/api/runner.py` | Selects hardened Docker executor |
-| `ProductionDockerExecutor` | `openrat/executors/docker_executor.py` | Hardened Docker execution |
+| Internal Docker executor | `openrat/_executors/docker_executor.py` | Hardened Docker execution |
 | `validate_command_guardrails` | `openrat/sandbox/guardrails.py` | Defense-in-depth command pattern blocking |
 
 ---
@@ -140,13 +140,9 @@ Untrusted callable tools require explicit `host.exec` capability and user opt-in
 
 ## Executor policy
 
-OpenRat uses Docker-only execution (production-hardened):
-
-```python
-from openrat.executors import set_executor_policy
-set_executor_policy("production")   # always Docker
-set_executor_policy("auto")         # alias of production
-```
+Executor implementations are internal runtime details under `openrat/_executors/`.
+Users select the execution mode through `Openrat({...})` or CLI flags; they do
+not import executor classes or policy helpers directly.
 
 ---
 

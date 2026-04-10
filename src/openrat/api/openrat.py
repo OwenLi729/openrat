@@ -57,15 +57,57 @@ class Openrat:
         isolate: bool = True,
         memory: str = "512m",
         cpus: str = "1.0",
+        executor: str | None = None,
     ) -> Mapping[str, Any]:
         """Direct compatibility path (non-planned execution)."""
-        return self._ensure_agent().run(
+        agent = self._ensure_agent()
+        previous_executor = agent.executor
+        previous_selected = getattr(agent, "_selected_executor_name", None)
+        if executor is not None:
+            agent.executor = executor
+            agent._selected_executor_name = str(executor)
+        try:
+            return agent.run(
             path,
             timeout=timeout,
             isolate=isolate,
             memory=memory,
             cpus=cpus,
-        )
+            )
+        finally:
+            if executor is not None:
+                agent.executor = previous_executor
+                agent._selected_executor_name = previous_selected
+
+    def run_artifact(
+        self,
+        path: str,
+        timeout: int | None = None,
+        isolate: bool = True,
+        memory: str = "512m",
+        cpus: str = "1.0",
+        executor: str | None = None,
+    ) -> Artifact:
+        """Direct compatibility path that returns an `Artifact` for a single execution."""
+        agent = self._ensure_agent()
+        previous_executor = agent.executor
+        previous_selected = getattr(agent, "_selected_executor_name", None)
+        if executor is not None:
+            agent.executor = executor
+            agent._selected_executor_name = str(executor)
+        try:
+            result = agent.run(
+                path,
+                timeout=timeout,
+                isolate=isolate,
+                memory=memory,
+                cpus=cpus,
+            )
+        finally:
+            if executor is not None:
+                agent.executor = previous_executor
+                agent._selected_executor_name = previous_selected
+        return Artifact.from_execution_result(result=result, session=agent.session, path=path)
 
     def chat(self, messages: str | list[Message], max_turns: int = 10) -> ModelResponse:
         """Direct compatibility path to the low-level LLM agent loop."""

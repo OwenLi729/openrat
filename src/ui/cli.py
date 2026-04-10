@@ -1,7 +1,7 @@
 import argparse
 import sys
 from openrat import Openrat
-from openrat.core.errors import OpenratError
+from openrat.core.errors import OpenratError, LocalExecutionBypassesSandboxError
 
 
 def main(argv=None):
@@ -17,6 +17,8 @@ def main(argv=None):
 
     if args.cmd == "run":
         try:
+            if args.executor == "local":
+                print(LocalExecutionBypassesSandboxError.DEFAULT_MESSAGE, file=sys.stderr)
             app = Openrat({"executor": args.executor} if args.executor else None)
             res = app.run(args.path, timeout=args.timeout)
             print("Result:")

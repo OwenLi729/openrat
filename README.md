@@ -7,7 +7,8 @@ It is built for researchers and research institutions who want automation withou
 
 
 What Openrat does
-* Runs experiments in Docker with sandboxed execution
+* Runs experiments in Docker with sandboxed execution by default
+* Supports explicit trusted-host local execution for fast iteration
 * Diagnoses failures and reports actionable diagnostics
 * Chains and branches experiments based on results
 * Safely applies bounded, auditable changes (e.g. configs, hyperparameters)
@@ -87,7 +88,7 @@ Model‑agnostic
 
 
 Privacy & security
-* Local runs
+* Local models or local execution workflows remain on your machine
 * No code, data, or experiments leave your machine unless you choose
 * Remote control workflows (coming soon; see `ROADMAP.md`)
 * Autonomy and permissions are enforced by policy, not by the model
@@ -133,6 +134,17 @@ print(f"Exit code: {result['return_code']}")
 See `examples/run_experiment.py` for a complete example.
 
 Examples require Docker to be running.
+
+For trusted local development without Docker, you may explicitly opt into local
+execution:
+
+```python
+app = Openrat({"executor": "local"})
+result = app.run("experiments/train.py", timeout=60)
+```
+
+Local execution bypasses container sandboxing and is intended only for trusted
+workflows.
 
 ### 2. Framework Workflow (Recommended)
 
@@ -247,10 +259,15 @@ artifact.governance_report()
 
 ## Executor policy
 
-All execution is routed through the `DockerExecutor`, which runs scripts in an
-ephemeral container with `--network none`, `--security-opt no-new-privileges`,
-`--cap-drop=ALL`, `--read-only`, `--tmpfs /tmp`, `--pids-limit 100`, and
-bounded memory/CPU limits.
+Docker remains the default and recommended execution backend. Internally,
+Openrat runs scripts in an ephemeral container with `--network none`,
+`--security-opt no-new-privileges`, `--cap-drop=ALL`, `--read-only`,
+`--tmpfs /tmp`, `--pids-limit 100`, and bounded memory/CPU limits.
+
+Openrat also supports explicit `executor="local"` for trusted-host execution.
+That path keeps governance, autonomy checks, patch policy, tool capability
+enforcement, timeouts, and best-effort resource limits, but it does **not**
+provide container isolation.
 
 Openrat is safe-by-default for execution limits:
 
@@ -262,13 +279,19 @@ Openrat is safe-by-default for execution limits:
 Unbounded limits are blocked unless explicitly enabled by user config
 (`allow_unbounded_limits=True`).
 
-```python
-from openrat.executors import set_executor_policy
+Executor selection is an internal runtime concern. Configure it through
+`Openrat({...})`, the CLI, or the agent runtime rather than importing executor
+objects directly.
 
-# Both modes register the DockerExecutor (the only available backend)
-set_executor_policy("production")   # explicit
-set_executor_policy("auto")          # default
+CLI selection is also explicit:
+
+```bash
+openrat run experiments/train.py --executor docker
+openrat run experiments/train.py --executor local
 ```
+
+If Docker is unavailable and you requested Docker, Openrat fails explicitly. It
+does not silently downgrade to local execution.
 
 ## Roadmap
 

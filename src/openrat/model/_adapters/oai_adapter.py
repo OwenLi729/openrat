@@ -3,6 +3,7 @@ from typing import Any
 import uuid
 import requests
 import json
+from urllib.parse import urlparse
 
 from .base_adapter import BaseModelAdapter
 from ..types import Message, ModelResponse, ToolCall
@@ -48,6 +49,16 @@ class OpenAICompatibleAdapter(BaseModelAdapter):
 
         return calls
 
+    @staticmethod
+    def _is_local_base_url(base_url: str | None) -> bool:
+        if not base_url:
+            return False
+        try:
+            host = (urlparse(base_url).hostname or "").lower()
+        except Exception:
+            return False
+        return host in {"localhost", "127.0.0.1", "::1", "0.0.0.0"}
+
     def generate(
         self,
         messages: Sequence[Message],
@@ -55,7 +66,7 @@ class OpenAICompatibleAdapter(BaseModelAdapter):
         config: Mapping[str, Any] | None = None,
     ) -> ModelResponse:
         # If adapter is unconfigured, return a harmless stub response (no network)
-        if not self.base_url or not self.api_key:
+        if not self.base_url or (not self.api_key and not self._is_local_base_url(self.base_url)):
             last = messages[-1].content if messages else None
             return ModelResponse(content=f"[stub:{self.provider}] {last}" if last else None, tool_calls=[], raw={"provider": self.provider})
 
@@ -67,9 +78,10 @@ class OpenAICompatibleAdapter(BaseModelAdapter):
         }
 
         headers = {
-            "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
 
         resp = requests.post(f"{self.base_url}/chat/completions", json=payload, headers=headers, timeout=120)
         data = resp.json()
