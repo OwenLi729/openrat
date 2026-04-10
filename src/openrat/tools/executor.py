@@ -6,7 +6,7 @@ from pathlib import PurePosixPath
 from .base import BaseTool, ToolProposal
 from openrat._executors import ExecutorRegistry
 from openrat.core.errors import UserInputError, ExecutionError
-from openrat.sandbox.guardrails import validate_command_guardrails
+from openrat._sandbox._guardrails import validate_command_guardrails
 
 
 class ExecutorTool(BaseTool):

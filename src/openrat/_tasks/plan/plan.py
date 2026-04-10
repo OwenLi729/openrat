@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 from openrat.core.experiment_spec import ExperimentSpec
 from openrat.core.session.session import Session
 from openrat.core.errors import PolicyViolation
-from openrat.tasks.dag.dag import DAG
+from openrat._tasks.dag.dag import DAG
 
 
 @dataclass(frozen=True)

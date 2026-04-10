@@ -1,4 +1,4 @@
-from openrat.model.agent_loop import AgentLoop
+from openrat.model._agent_loop import AgentLoop
 from openrat.model.types import Message, ToolCall, ModelResponse
 
 

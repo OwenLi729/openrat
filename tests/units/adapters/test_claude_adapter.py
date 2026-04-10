@@ -2,7 +2,7 @@ import types
 
 import pytest
 
-from openrat.model.adapters.claude_adapter import ClaudeAdapter
+from openrat.model._adapters.claude_adapter import ClaudeAdapter
 from openrat.model.types import Message, ToolCall, ModelResponse
 
 
@@ -26,7 +26,7 @@ def test_claude_adapter_parses_tool_use(monkeypatch):
     def fake_post(url, json=None, headers=None, timeout=None):
         return DummyResp(vendor)
 
-    monkeypatch.setattr("openrat.model.adapters.claude_adapter.requests.post", fake_post)
+    monkeypatch.setattr("openrat.model._adapters.claude_adapter.requests.post", fake_post)
 
     adapter = ClaudeAdapter(api_key="k", model_name="c1")
     resp = adapter.generate([Message(role="user", content="go")])

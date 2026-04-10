@@ -30,8 +30,8 @@ from openrat import Openrat, BaseTool
 from openrat.core.governance.autonomy import AutonomyLevel
 from openrat.core.artifact import Artifact
 from openrat.core.errors import PolicyViolation
-from openrat.executors.docker_executor import DockerExecutor
-from openrat.tasks.dag.task import TaskState
+from openrat._executors.docker_executor import DockerExecutor
+from openrat._tasks.dag.task import TaskState
 
 # ---------------------------------------------------------------------------
 # Shared fixtures

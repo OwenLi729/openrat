@@ -99,7 +99,7 @@ class ExperimentSpec:
         """Pure transformation: ExperimentSpec → DAG inputs."""
         self.validate()
 
-        from openrat.tasks.dag.task import Task
+        from openrat._tasks.dag.task import Task
 
         dag_tasks = {}
         for task_id, cfg in self.tasks.items():

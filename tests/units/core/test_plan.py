@@ -7,8 +7,8 @@ sys.path.insert(0, str(root))
 from openrat.core.experiment_spec import ExperimentSpec
 from openrat.core.session.session import Session
 from openrat.core.governance.autonomy import AutonomyLevel
-from openrat.tasks.plan.plan import Plan
-from openrat.tasks.dag.task import TaskState
+from openrat._tasks.plan.plan import Plan
+from openrat._tasks.dag.task import TaskState
 
 
 def test_plan_is_descriptive_and_policy_checked_only():

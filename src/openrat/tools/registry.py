@@ -4,7 +4,7 @@ from collections.abc import Callable, Mapping
 from typing import Any
 
 from openrat.core.errors import UserInputError
-from openrat.core.protocols import SessionProtocol
+from openrat.core._protocols import SessionProtocol
 
 
 class ToolRegistry:

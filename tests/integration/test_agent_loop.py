@@ -4,8 +4,8 @@ from pathlib import Path
 # ensure project root is on sys.path when running tests directly
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from openrat.model.factory import ModelFactory
-from openrat.model.agent_loop import AgentLoop
+from openrat.model._factory import ModelFactory
+from openrat.model._agent_loop import AgentLoop
 from openrat.model.types import Message
 
 

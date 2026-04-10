@@ -7,8 +7,8 @@ from uuid import UUID, uuid4
 
 if TYPE_CHECKING:
     from openrat.core.session.session import Session
-    from openrat.tasks.dag.dag import DAG
-    from openrat.tasks.plan.plan import Plan
+    from openrat._tasks.dag.dag import DAG
+    from openrat._tasks.plan.plan import Plan
 
 
 @dataclass(frozen=True)

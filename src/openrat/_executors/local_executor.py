@@ -9,7 +9,7 @@ import re
 
 from .base_executor import BaseExecutor
 from openrat.core.errors import UserInputError, LocalExecutionBypassesSandboxError
-from openrat.sandbox.guardrails import validate_command_guardrails
+from openrat._sandbox._guardrails import validate_command_guardrails
 
 
 DEFAULT_TIMEOUT_SECONDS = 300

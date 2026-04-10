@@ -9,7 +9,7 @@ sys.path.insert(0, str(root))
 from openrat import Openrat, BaseTool
 from openrat.core.governance.autonomy import AutonomyLevel
 from openrat.core.errors import PolicyViolation
-from openrat.tasks.dag.task import TaskState
+from openrat._tasks.dag.task import TaskState
 
 
 class ObserveTool(BaseTool):

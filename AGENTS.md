@@ -60,7 +60,7 @@ Key components:
 | `OpenRatAgent` | `openrat/api/runner.py` | Low-level runtime + LLM adapter |
 | `_choose_executor` | `openrat/api/runner.py` | Selects hardened Docker executor |
 | Internal Docker executor | `openrat/_executors/docker_executor.py` | Hardened Docker execution |
-| `validate_command_guardrails` | `openrat/sandbox/guardrails.py` | Defense-in-depth command pattern blocking |
+| `validate_command_guardrails` | `openrat/_sandbox/_guardrails.py` | Defense-in-depth command pattern blocking |
 
 ---
 
@@ -91,10 +91,10 @@ Key components:
 
 | Component | Location | Role |
 |-----------|----------|------|
-| `ModelFactory` | `openrat/model/factory.py` | Creates provider adapter from config |
-| `AgentLoop` | `openrat/model/agent_loop.py` | Drives multi-turn LLM + tool loop |
+| `ModelFactory` | `openrat/model/_factory.py` | Creates provider adapter from config |
+| `AgentLoop` | `openrat/model/_agent_loop.py` | Drives multi-turn LLM + tool loop |
 | `ToolRegistry` | `openrat/tools/registry.py` | Holds named tools callable by the model |
-| Provider adapters | `openrat/model/adapters/` | OpenAI-compatible, Claude, Gemini |
+| Provider adapters | `openrat/model/_adapters/` | OpenAI-compatible, Claude, Gemini |
 
 When model config keys (`provider`, `api_key`, etc.) are present in the config dict
 passed to `Openrat` (or directly to `OpenRatAgent`), the low-level runtime builds

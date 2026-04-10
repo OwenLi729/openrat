@@ -3,8 +3,8 @@ from collections.abc import Iterable, Mapping
 from typing import Any
 
 from openrat.core.errors import UserInputError, InternalError, PolicyViolation
-from openrat.core.protocols import SessionProtocol, ToolProtocol
-from openrat.tasks.dag.task import Task, TaskExecution, TaskState
+from openrat.core._protocols import SessionProtocol, ToolProtocol
+from openrat._tasks.dag.task import Task, TaskExecution, TaskState
 
 
 class DAG:

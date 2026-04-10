@@ -20,7 +20,7 @@ Executor configuration is handled via Openrat config dict:
 
 from .docker_executor import DockerExecutor
 from .local_executor import LocalExecutor
-from .registry import ExecutorRegistry as _ExecutorRegistry
+from ._registry import ExecutorRegistry as _ExecutorRegistry
 from openrat.core.errors import UserInputError
 
 EXECUTOR_POLICY = {"mode": "production"}

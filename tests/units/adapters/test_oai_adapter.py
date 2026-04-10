@@ -3,7 +3,7 @@ import types
 
 import pytest
 
-from openrat.model.adapters.oai_adapter import OpenAICompatibleAdapter
+from openrat.model._adapters.oai_adapter import OpenAICompatibleAdapter
 from openrat.model.types import Message, ToolCall, ModelResponse
 
 
@@ -34,7 +34,7 @@ def test_oai_adapter_parses_tool_calls(monkeypatch):
     def fake_post(url, json=None, headers=None, timeout=None):
         return DummyResp(vendor)
 
-    monkeypatch.setattr("openrat.model.adapters.oai_adapter.requests.post", fake_post)
+    monkeypatch.setattr("openrat.model._adapters.oai_adapter.requests.post", fake_post)
 
     adapter = OpenAICompatibleAdapter(base_url="https://api", api_key="key", model_name="m1")
     resp = adapter.generate([Message(role="user", content="please")])
@@ -69,7 +69,7 @@ def test_oai_adapter_allows_local_base_url_without_api_key(monkeypatch):
         captured["headers"] = headers or {}
         return DummyResp(vendor)
 
-    monkeypatch.setattr("openrat.model.adapters.oai_adapter.requests.post", fake_post)
+    monkeypatch.setattr("openrat.model._adapters.oai_adapter.requests.post", fake_post)
 
     adapter = OpenAICompatibleAdapter(base_url="http://localhost:11434/v1", api_key=None, model_name="qwen")
     resp = adapter.generate([Message(role="user", content="please")])

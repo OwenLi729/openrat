@@ -10,8 +10,8 @@ from openrat.core.session.session import Session
 from openrat._executors import DockerExecutor, LocalExecutor
 from openrat.core.errors import UserInputError, EnvironmentError, InternalError, LocalExecutionBypassesSandboxError
 from openrat.model.types import Message, ModelResponse
-from openrat.core.protocols import ExecutorProtocol, ToolRegistryProtocol
-from openrat.sandbox.guardrails import validate_command_guardrails
+from openrat.core._protocols import ExecutorProtocol, ToolRegistryProtocol
+from openrat._sandbox._guardrails import validate_command_guardrails
 
 
 DEFAULT_TIMEOUT_SECONDS = 300
@@ -261,8 +261,8 @@ class OpenRatAgent:
         self.agent_loop: Any = None
         self.tool_registry: ToolRegistryProtocol | None = None
         if self.config.get("provider"):
-            from openrat.model.factory import ModelFactory
-            from openrat.model.agent_loop import AgentLoop
+            from openrat.model._factory import ModelFactory
+            from openrat.model._agent_loop import AgentLoop
             from openrat.tools.registry import ToolRegistry
 
             adapter = ModelFactory.create(self.config)

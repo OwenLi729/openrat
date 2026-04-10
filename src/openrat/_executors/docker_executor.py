@@ -8,7 +8,7 @@ import os
 import re
 
 from openrat.core.errors import UserInputError
-from openrat.sandbox.guardrails import validate_command_guardrails
+from openrat._sandbox._guardrails import validate_command_guardrails
 
 
 DEFAULT_TIMEOUT_SECONDS = 300

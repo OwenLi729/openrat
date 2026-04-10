@@ -7,7 +7,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from openrat.model.agent_loop import AgentLoop
+from openrat.model._agent_loop import AgentLoop
 from openrat.model.types import Message, ModelResponse, ToolCall
 from openrat.tools.registry import ToolRegistry
 from openrat.core.errors import UserInputError, InternalError

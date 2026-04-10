@@ -5,7 +5,7 @@ import pytest
 # ensure project root is on sys.path when running tests directly
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from openrat.model.factory import ModelFactory
+from openrat.model._factory import ModelFactory
 from openrat.model.types import Message
 from openrat.core.errors import UserInputError
 

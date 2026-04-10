@@ -6,8 +6,8 @@ from openrat.core.governance.autonomy import AutonomyLevel
 from openrat.core.experiment_spec import ExperimentSpec
 from openrat.core.session.session import Session
 from openrat.model.types import Message, ModelResponse
-from openrat.core.protocols import ToolProtocol, ToolRegistryProtocol
-from openrat.tasks.plan.plan import Plan
+from openrat.core._protocols import ToolProtocol, ToolRegistryProtocol
+from openrat._tasks.plan.plan import Plan
 
 if TYPE_CHECKING:
     from .runner import OpenRatAgent

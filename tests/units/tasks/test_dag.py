@@ -4,8 +4,8 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(root))
 
-from openrat.tasks.dag.dag import DAG
-from openrat.tasks.dag.task import Task, TaskState
+from openrat._tasks.dag.dag import DAG
+from openrat._tasks.dag.task import Task, TaskState
 from openrat.core.session.session import Session
 from openrat.core.governance.autonomy import AutonomyLevel
 from openrat.tools.base import BaseTool

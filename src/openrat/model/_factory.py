@@ -1,11 +1,11 @@
 from collections.abc import Mapping
 from typing import Any
 
-from .adapters.oai_adapter import OpenAICompatibleAdapter
-from .adapters.claude_adapter import ClaudeAdapter
-from .adapters.gemini_adapter import GeminiAdapter
+from ._adapters.oai_adapter import OpenAICompatibleAdapter
+from ._adapters.claude_adapter import ClaudeAdapter
+from ._adapters.gemini_adapter import GeminiAdapter
 from openrat.core.errors import UserInputError
-from openrat.core.protocols import ModelAdapterProtocol
+from openrat.core._protocols import ModelAdapterProtocol
 
 
 class ModelFactory:
